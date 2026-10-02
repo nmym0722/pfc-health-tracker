@@ -1,0 +1,35 @@
+{
+    "name": "PFC Tracker - カロリー＆PFC管理",
+    "short_name": "PFC Tracker",
+    "start_url": ".",
+    "display": "standalone",
+    "background_color": "#00B47D",
+    "theme_color": "#00B47D",
+    "description": "自炊・外食のPFCバランスとカロリー収支をスマートに管理できるアプリ",
+    "orientation": "portrait-primary",
+    "prefer_related_applications": false,
+    "icons": [
+        {
+            "src": "icons/Icon-192.png",
+            "sizes": "192x192",
+            "type": "image/png"
+        },
+        {
+            "src": "icons/Icon-512.png",
+            "sizes": "512x512",
+            "type": "image/png"
+        },
+        {
+            "src": "icons/Icon-maskable-192.png",
+            "sizes": "192x192",
+            "type": "image/png",
+            "purpose": "maskable"
+        },
+        {
+            "src": "icons/Icon-maskable-512.png",
+            "sizes": "512x512",
+            "type": "image/png",
+            "purpose": "maskable"
+        }
+    ]
+}

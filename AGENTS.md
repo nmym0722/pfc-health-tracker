@@ -39,3 +39,25 @@ Docs: https://docs.expo.dev/eas/index.md
 - If `ios/` and `android/` directories do not exist, they are generated (Continuous Native Generation). Never create or edit them by hand — configure native behavior in `app.json` and config plugins.
 - Expo Go only includes its bundled native modules. After adding a library with native code, the app needs a development build: `npx expo run:ios|android` locally, or `eas build --profile development`.
 - Prefer recommended Expo modules over third-party libraries, and check your available skills before adding dependencies. Docs: https://docs.expo.dev/versions/latest/index.md
+
+## Design System Rules: Material Design 3 (M3)
+
+Adhere strictly to the Material Design 3 specification for all UI implementations.
+Avoid generic AI styles (arbitrary drop shadows, random gradient cards, inconsistent padding).
+
+See [DESIGN_SYSTEM.md](file:///c:/devlop/pfc-health-tracker/DESIGN_SYSTEM.md) for full details.
+
+### Core Principles Summary
+1. **Color System & Semantic Roles**: Map colors to M3 semantic roles (`Primary`, `Secondary`, `Tertiary`, `Surface`, `Surface Container` levels, `Outline`). No arbitrary hardcoded hex codes.
+2. **Elevation**: Surface Tint & Container levels over heavy drop shadows.
+3. **Shape Scale**: Use standard radius (`0px`, `4px`, `8px`, `12px`, `16px`, `28px`, `9999px`). No arbitrary values like `rounded-[13px]`.
+4. **Typography**: Use standard roles (`Display`, `Headline`, `Title`, `Body`, `Label`) & **Sentence case** only.
+5. **Spacing & Touch**: 8dp base grid, 16dp horizontal screen padding, min **48dp × 48dp** touch targets.
+6. **Component Selection**: Single Filled Button per primary action, Tonal/Outlined for secondary, Outlined/Elevated Cards.
+7. **Anti-Patterns**: No tech gradients, no unrequested blur/glassmorphism, text >= 11sp, no pure black text on light mode.
+
+## Typography Settings
+- **Primary Font**: Use `GoogleFonts.notoSansJp()` for all Japanese & alphanumeric text.
+- **Weights**: Restrict to `FontWeight.w400` (body/labels) and `FontWeight.w600` (numbers/titles).
+- **Tabular Figures**: For nutrition metrics and calorie counters, apply tabular figures (`FontFeature.tabularFigures()`) to ensure numbers align neatly in lists.
+
