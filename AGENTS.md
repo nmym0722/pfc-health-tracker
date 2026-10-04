@@ -61,3 +61,9 @@ See [DESIGN_SYSTEM.md](file:///c:/devlop/pfc-health-tracker/DESIGN_SYSTEM.md) fo
 - **Weights**: Restrict to `FontWeight.w400` (body/labels) and `FontWeight.w600` (numbers/titles).
 - **Tabular Figures**: For nutrition metrics and calorie counters, apply tabular figures (`FontFeature.tabularFigures()`) to ensure numbers align neatly in lists.
 
+## Deployment Workflow (Vercel)
+本プロジェクト（Flutter Web）はVercelのGit自動ビルド環境（Flutter SDK）がないため、**Gitへのプッシュ時およびデプロイ指示を受けた際は、必ず以下の手順でVercelへ本番デプロイを実行すること**:
+1. `flutter build web`（本番用Webビルド）
+2. `build/web` ディレクトリにて `npx vercel --prod --scope toeicapps --yes` を実行
+3. 本番URL（`https://pfc-tracker-tau.vercel.app/`）が正常に更新されたことを確認
+
