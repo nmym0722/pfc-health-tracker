@@ -22,6 +22,7 @@ void main() async {
     StorageService.loadWeightLogs(),
     StorageService.loadMeals(),
     StorageService.loadRecipes(),
+    StorageService.loadFoodMasters(),
   ]);
 
   // Noto Sans JP (Regular 400 & SemiBold 600) を最大800msだけ事前待機
@@ -41,6 +42,7 @@ void main() async {
   final savedWeights = savedData[1] as dynamic;
   final savedMeals = savedData[2] as dynamic;
   final savedRecipes = savedData[3] as dynamic;
+  final savedFoodMasters = savedData[4] as dynamic;
 
   runApp(
     ProviderScope(
@@ -53,6 +55,8 @@ void main() async {
           mealProvider.overrideWith((ref) => MealNotifier(initial: savedMeals)),
         if (savedRecipes != null)
           recipeProvider.overrideWith((ref) => RecipeNotifier(initial: savedRecipes)),
+        if (savedFoodMasters != null)
+          foodMasterProvider.overrideWith((ref) => FoodMasterNotifier(initial: savedFoodMasters)),
       ],
       child: const PfcTrackerApp(),
     ),

@@ -1,5 +1,6 @@
 import 'package:flutter_test/flutter_test.dart';
 import 'package:shared_preferences/shared_preferences.dart';
+import 'package:pfc_health_tracker/models/food_master.dart';
 import 'package:pfc_health_tracker/models/meal_record.dart';
 import 'package:pfc_health_tracker/models/user_profile.dart';
 import 'package:pfc_health_tracker/models/weight_log.dart';
@@ -90,6 +91,36 @@ void main() {
       expect(loaded!.name, equals('テストユーザー'));
       expect(loaded.height, equals(175.0));
       expect(loaded.goals.targetCalories, equals(2000));
+    });
+
+    test('FoodMaster の保存と復元（カスタム食材・栄養価調整）が正しく動作すること', () async {
+      final foods = [
+        const FoodMaster(
+          id: 'custom-food-test',
+          name: '自家製プロテインオートミール',
+          baseAmount: 100,
+          unit: FoodUnit.g,
+          calories: 380,
+          protein: 30,
+          fat: 6,
+          carbs: 52,
+          category: '主食・穀物',
+          isCustom: true,
+        ),
+      ];
+
+      await StorageService.saveFoodMasters(foods);
+      final loaded = await StorageService.loadFoodMasters();
+
+      expect(loaded, isNotNull);
+      expect(loaded!.length, equals(1));
+      expect(loaded.first.id, equals('custom-food-test'));
+      expect(loaded.first.name, equals('自家製プロテインオートミール'));
+      expect(loaded.first.calories, equals(380));
+      expect(loaded.first.protein, equals(30));
+      expect(loaded.first.fat, equals(6));
+      expect(loaded.first.carbs, equals(52));
+      expect(loaded.first.isCustom, isTrue);
     });
   });
 }

@@ -6,6 +6,7 @@ import '../../models/recipe.dart';
 import '../../core/utils/amount_parser.dart';
 import '../../providers/meal_provider.dart';
 import '../../providers/food_master_provider.dart';
+import '../common/food_edit_dialog.dart';
 import '../main_navigation_screen.dart';
 
 class MealInputScreen extends ConsumerStatefulWidget {
@@ -218,13 +219,30 @@ class _MealInputScreenState extends ConsumerState<MealInputScreen>
             ],
           ),
           const SizedBox(height: 32),
-          FilledButton.icon(
-            onPressed: _submitDirectInput,
-            icon: const Icon(Icons.check),
-            label: const Text('食事記録に追加'),
-            style: FilledButton.styleFrom(
-              minimumSize: const Size.fromHeight(48),
-            ),
+          Row(
+            children: [
+              Expanded(
+                child: OutlinedButton.icon(
+                  onPressed: _saveDirectInputAsRecipe,
+                  icon: const Icon(Icons.bookmark_add_outlined),
+                  label: const Text('マイレシピに保存'),
+                  style: OutlinedButton.styleFrom(
+                    minimumSize: const Size.fromHeight(48),
+                  ),
+                ),
+              ),
+              const SizedBox(width: 12),
+              Expanded(
+                child: FilledButton.icon(
+                  onPressed: _submitDirectInput,
+                  icon: const Icon(Icons.check),
+                  label: const Text('食事記録に追加'),
+                  style: FilledButton.styleFrom(
+                    minimumSize: const Size.fromHeight(48),
+                  ),
+                ),
+              ),
+            ],
           ),
         ],
       ),
@@ -388,17 +406,33 @@ class _MealInputScreenState extends ConsumerState<MealInputScreen>
           ),
         ),
 
-        // 食材検索バー
+        // 食材検索バー & 新規食材追加ボタン
         Padding(
           padding: const EdgeInsets.symmetric(horizontal: 16.0, vertical: 4.0),
-          child: SearchBar(
-            hintText: '食材を検索 (例: 鶏むね肉, 米, 卵)',
-            leading: const Icon(Icons.search),
-            onChanged: (value) {
-              setState(() {
-                _searchQuery = value;
-              });
-            },
+          child: Row(
+            children: [
+              Expanded(
+                child: SearchBar(
+                  hintText: '食材を検索 (例: 鶏むね肉, 米, 卵)',
+                  leading: const Icon(Icons.search),
+                  onChanged: (value) {
+                    setState(() {
+                      _searchQuery = value;
+                    });
+                  },
+                ),
+              ),
+              const SizedBox(width: 8),
+              FilledButton.tonalIcon(
+                onPressed: _openAddFoodDialog,
+                icon: const Icon(Icons.add, size: 18),
+                label: const Text('食材追加'),
+                style: FilledButton.styleFrom(
+                  minimumSize: const Size(0, 48),
+                  padding: const EdgeInsets.symmetric(horizontal: 12),
+                ),
+              ),
+            ],
           ),
         ),
 
@@ -483,13 +517,46 @@ class _MealInputScreenState extends ConsumerState<MealInputScreen>
               return ListTile(
                 selected: isSelected,
                 selectedTileColor: theme.colorScheme.primaryContainer.withOpacity(0.3),
-                title: Text(food.name, style: const TextStyle(fontWeight: FontWeight.bold)),
+                title: Row(
+                  children: [
+                    Expanded(
+                      child: Text(food.name, style: const TextStyle(fontWeight: FontWeight.bold)),
+                    ),
+                    if (food.isCustom)
+                      Container(
+                        padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
+                        decoration: BoxDecoration(
+                          color: theme.colorScheme.secondaryContainer,
+                          borderRadius: BorderRadius.circular(4),
+                        ),
+                        child: Text(
+                          'カスタム',
+                          style: TextStyle(
+                            fontSize: 10,
+                            fontWeight: FontWeight.bold,
+                            color: theme.colorScheme.onSecondaryContainer,
+                          ),
+                        ),
+                      ),
+                  ],
+                ),
                 subtitle: Text(
                   '${food.baseAmountLabel}あたり: ${food.calories}kcal (P:${food.protein}g F:${food.fat}g C:${food.carbs}g)',
                 ),
-                trailing: isSelected
-                    ? Icon(Icons.check_circle, color: theme.colorScheme.primary)
-                    : const Icon(Icons.add_circle_outline),
+                trailing: Row(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    IconButton(
+                      icon: const Icon(Icons.tune, size: 20),
+                      tooltip: 'カロリー・PFCを調整',
+                      onPressed: () => _openEditFoodDialog(food),
+                    ),
+                    Icon(
+                      isSelected ? Icons.check_circle : Icons.add_circle_outline,
+                      color: isSelected ? theme.colorScheme.primary : null,
+                    ),
+                  ],
+                ),
                 onTap: () {
                   setState(() {
                     _selectedFoodForBowl = food;
@@ -986,5 +1053,184 @@ class _MealInputScreenState extends ConsumerState<MealInputScreen>
     );
 
     _onMealSavedSuccess('${_selectedMealType.label}に「$name」を記録しました');
+  }
+
+  // 直接入力からマイレシピとして保存
+  void _saveDirectInputAsRecipe() {
+    final name = _nameController.text.trim();
+    if (name.isEmpty) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('メニュー名を入力してください')),
+      );
+      return;
+    }
+
+    final calories = double.tryParse(_caloriesController.text) ?? 0.0;
+    final protein = double.tryParse(_proteinController.text) ?? 0.0;
+    final fat = double.tryParse(_fatController.text) ?? 0.0;
+    final carbs = double.tryParse(_carbsController.text) ?? 0.0;
+
+    final nameController = TextEditingController(text: name);
+    final descController = TextEditingController();
+    int servings = 1;
+
+    showDialog(
+      context: context,
+      builder: (ctx) {
+        return StatefulBuilder(
+          builder: (context, setDialogState) {
+            return AlertDialog(
+              title: const Text('マイレシピとして保存'),
+              content: SingleChildScrollView(
+                child: Column(
+                  mainAxisSize: MainAxisSize.min,
+                  crossAxisAlignment: CrossAxisAlignment.stretch,
+                  children: [
+                    TextField(
+                      controller: nameController,
+                      decoration: const InputDecoration(
+                        labelText: '料理名 *',
+                        border: OutlineInputBorder(),
+                      ),
+                    ),
+                    const SizedBox(height: 12),
+                    TextField(
+                      controller: descController,
+                      decoration: const InputDecoration(
+                        labelText: 'メモ・説明 (任意)',
+                        hintText: '例: 外食・コンビニの定番',
+                        border: OutlineInputBorder(),
+                      ),
+                    ),
+                    const SizedBox(height: 16),
+                    Row(
+                      mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                      children: [
+                        const Text('何人前分ですか？'),
+                        DropdownButton<int>(
+                          value: servings,
+                          items: [1, 2, 3, 4, 5].map((s) {
+                            return DropdownMenuItem(
+                              value: s,
+                              child: Text('$s 人前'),
+                            );
+                          }).toList(),
+                          onChanged: (val) {
+                            if (val != null) {
+                              setDialogState(() {
+                                servings = val;
+                              });
+                            }
+                          },
+                        ),
+                      ],
+                    ),
+                    const SizedBox(height: 16),
+                    Container(
+                      padding: const EdgeInsets.all(12),
+                      decoration: BoxDecoration(
+                        color: Theme.of(context).colorScheme.surfaceContainerHighest,
+                        borderRadius: BorderRadius.circular(8),
+                      ),
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          Text(
+                            '合計栄養価 (${calories.toStringAsFixed(1)} kcal)',
+                            style: const TextStyle(fontWeight: FontWeight.bold),
+                          ),
+                          const SizedBox(height: 4),
+                          Text(
+                            'P: ${protein.toStringAsFixed(1)}g / F: ${fat.toStringAsFixed(1)}g / C: ${carbs.toStringAsFixed(1)}g',
+                            style: TextStyle(
+                              fontSize: 12,
+                              color: Theme.of(context).colorScheme.onSurfaceVariant,
+                            ),
+                          ),
+                        ],
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+              actions: [
+                TextButton(
+                  onPressed: () => Navigator.of(ctx).pop(),
+                  child: const Text('キャンセル'),
+                ),
+                FilledButton(
+                  onPressed: () {
+                    final recipeName = nameController.text.trim();
+                    if (recipeName.isEmpty) return;
+
+                    // 1食あたりの分量から食材マスタを生成
+                    final food = FoodMaster(
+                      id: 'food-recipe-${DateTime.now().millisecondsSinceEpoch}',
+                      name: recipeName,
+                      baseAmount: 1.0,
+                      unit: FoodUnit.serving,
+                      calories: calories / (servings > 0 ? servings : 1),
+                      protein: protein / (servings > 0 ? servings : 1),
+                      fat: fat / (servings > 0 ? servings : 1),
+                      carbs: carbs / (servings > 0 ? servings : 1),
+                      category: 'その他',
+                      isCustom: true,
+                    );
+
+                    final newRecipe = Recipe(
+                      id: 'recipe-${DateTime.now().millisecondsSinceEpoch}',
+                      name: recipeName,
+                      description: descController.text.trim().isEmpty ? null : descController.text.trim(),
+                      servings: servings,
+                      ingredients: [
+                        RecipeIngredient(food: food, amount: 1.0 * servings),
+                      ],
+                      createdAt: DateTime.now(),
+                    );
+
+                    ref.read(recipeProvider.notifier).addRecipe(newRecipe);
+                    Navigator.of(ctx).pop();
+
+                    ScaffoldMessenger.of(context).showSnackBar(
+                      SnackBar(content: Text('マイレシピ「$recipeName」を保存しました')),
+                    );
+                  },
+                  child: const Text('保存'),
+                ),
+              ],
+            );
+          },
+        );
+      },
+    );
+  }
+
+  // 新規食材ダイアログを開く
+  Future<void> _openAddFoodDialog() async {
+    final newFood = await FoodEditDialog.show(context);
+    if (newFood != null && mounted) {
+      setState(() {
+        _selectedFoodForBowl = newFood;
+        _bowlAmountController.text = AmountParser.formatAmount(newFood.baseAmount);
+      });
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text('「${newFood.name}」をライブラリに追加しました')),
+      );
+    }
+  }
+
+  // 既存食材の調整ダイアログを開く
+  Future<void> _openEditFoodDialog(FoodMaster food) async {
+    final updated = await FoodEditDialog.show(context, food: food);
+    if (updated != null && mounted) {
+      if (_selectedFoodForBowl?.id == updated.id) {
+        setState(() {
+          _selectedFoodForBowl = updated;
+        });
+      }
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text('「${updated.name}」の栄養価を更新しました')),
+      );
+    }
   }
 }

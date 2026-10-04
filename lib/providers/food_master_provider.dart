@@ -5,11 +5,30 @@ import '../models/recipe.dart';
 import '../services/storage_service.dart';
 
 class FoodMasterNotifier extends StateNotifier<List<FoodMaster>> {
-  FoodMasterNotifier() : super(DefaultFoods.list);
+  FoodMasterNotifier({List<FoodMaster>? initial}) : super(initial ?? DefaultFoods.list);
 
-  void addCustomFood(FoodMaster food) {
+  void addFood(FoodMaster food) {
     state = [...state, food];
+    StorageService.saveFoodMasters(state);
   }
+
+  void updateFood(FoodMaster updatedFood) {
+    state = state.map((f) => f.id == updatedFood.id ? updatedFood : f).toList();
+    StorageService.saveFoodMasters(state);
+  }
+
+  void deleteFood(String foodId) {
+    state = state.where((f) => f.id != foodId).toList();
+    StorageService.saveFoodMasters(state);
+  }
+
+  void resetToDefaults() {
+    state = DefaultFoods.list;
+    StorageService.saveFoodMasters(state);
+  }
+
+  // 互換性維持
+  void addCustomFood(FoodMaster food) => addFood(food);
 }
 
 final foodMasterProvider = StateNotifierProvider<FoodMasterNotifier, List<FoodMaster>>((ref) {

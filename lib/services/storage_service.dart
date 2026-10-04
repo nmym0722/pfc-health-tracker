@@ -1,5 +1,6 @@
 import 'dart:convert';
 import 'package:shared_preferences/shared_preferences.dart';
+import '../models/food_master.dart';
 import '../models/meal_record.dart';
 import '../models/recipe.dart';
 import '../models/user_profile.dart';
@@ -88,6 +89,27 @@ class StorageService {
     try {
       final list = jsonDecode(str) as List<dynamic>;
       return list.map((item) => Recipe.fromJson(item as Map<String, dynamic>)).toList();
+    } catch (_) {
+      return null;
+    }
+  }
+
+  // --- 食材マスタの永続化 ---
+  static const _keyFoodMasters = 'pfc_tracker_foods_v1';
+
+  static Future<void> saveFoodMasters(List<FoodMaster> foods) async {
+    final p = await prefs;
+    final jsonList = foods.map((f) => f.toJson()).toList();
+    await p.setString(_keyFoodMasters, jsonEncode(jsonList));
+  }
+
+  static Future<List<FoodMaster>?> loadFoodMasters() async {
+    final p = await prefs;
+    final str = p.getString(_keyFoodMasters);
+    if (str == null) return null;
+    try {
+      final list = jsonDecode(str) as List<dynamic>;
+      return list.map((item) => FoodMaster.fromJson(item as Map<String, dynamic>)).toList();
     } catch (_) {
       return null;
     }

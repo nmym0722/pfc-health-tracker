@@ -5,7 +5,7 @@ import '../../models/meal_record.dart';
 import '../../models/food_master.dart';
 import '../../providers/food_master_provider.dart';
 import '../../providers/meal_provider.dart';
-
+import '../common/food_edit_dialog.dart';
 import '../profile/profile_settings_screen.dart';
 
 class MyRecipesScreen extends ConsumerStatefulWidget {
@@ -276,14 +276,30 @@ class _MyRecipesScreenState extends ConsumerState<MyRecipesScreen> {
       children: [
         Padding(
           padding: const EdgeInsets.fromLTRB(16, 12, 16, 4),
-          child: SearchBar(
-            hintText: '食材ライブラリを検索 (例: 鮭, 卵, 醤油)',
-            leading: const Icon(Icons.search),
-            onChanged: (val) {
-              setState(() {
-                _libSearchQuery = val;
-              });
-            },
+          child: Row(
+            children: [
+              Expanded(
+                child: SearchBar(
+                  hintText: '食材ライブラリを検索 (例: 鮭, 卵, 醤油)',
+                  leading: const Icon(Icons.search),
+                  onChanged: (val) {
+                    setState(() {
+                      _libSearchQuery = val;
+                    });
+                  },
+                ),
+              ),
+              const SizedBox(width: 8),
+              FilledButton.tonalIcon(
+                onPressed: () => _openFoodDialog(),
+                icon: const Icon(Icons.add, size: 18),
+                label: const Text('食材追加'),
+                style: FilledButton.styleFrom(
+                  minimumSize: const Size(0, 48),
+                  padding: const EdgeInsets.symmetric(horizontal: 14),
+                ),
+              ),
+            ],
           ),
         ),
         Padding(
@@ -366,22 +382,73 @@ class _MyRecipesScreenState extends ConsumerState<MyRecipesScreen> {
                   backgroundColor: theme.colorScheme.surfaceContainerHighest,
                   child: Icon(Icons.restaurant, color: theme.colorScheme.primary, size: 20),
                 ),
-                title: Text(food.name, style: const TextStyle(fontWeight: FontWeight.bold)),
+                title: Row(
+                  children: [
+                    Expanded(
+                      child: Text(food.name, style: const TextStyle(fontWeight: FontWeight.bold)),
+                    ),
+                    if (food.isCustom)
+                      Container(
+                        padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
+                        decoration: BoxDecoration(
+                          color: theme.colorScheme.secondaryContainer,
+                          borderRadius: BorderRadius.circular(4),
+                        ),
+                        child: Text(
+                          'カスタム',
+                          style: TextStyle(
+                            fontSize: 10,
+                            fontWeight: FontWeight.bold,
+                            color: theme.colorScheme.onSecondaryContainer,
+                          ),
+                        ),
+                      ),
+                  ],
+                ),
                 subtitle: Text(
                   '${food.baseAmountLabel}あたり: ${food.calories}kcal\nP:${food.protein}g / F:${food.fat}g / C:${food.carbs}g',
                 ),
-                trailing: food.category != null
-                    ? Chip(
-                        label: Text(food.category!, style: const TextStyle(fontSize: 10)),
-                        visualDensity: VisualDensity.compact,
-                      )
-                    : null,
+                trailing: Row(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    if (food.category != null)
+                      Padding(
+                        padding: const EdgeInsets.only(right: 4.0),
+                        child: Chip(
+                          label: Text(food.category!, style: const TextStyle(fontSize: 10)),
+                          visualDensity: VisualDensity.compact,
+                        ),
+                      ),
+                    IconButton(
+                      icon: const Icon(Icons.tune),
+                      tooltip: 'カロリー・PFCを調整',
+                      onPressed: () => _openFoodDialog(food: food),
+                    ),
+                  ],
+                ),
+                onTap: () => _openFoodDialog(food: food),
               );
             },
           ),
         ),
       ],
     );
+  }
+
+  // 食材追加 / 調整ダイアログ
+  Future<void> _openFoodDialog({FoodMaster? food}) async {
+    final saved = await FoodEditDialog.show(context, food: food);
+    if (saved != null && mounted) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text(
+            food != null
+                ? '「${saved.name}」の栄養価を更新しました'
+                : '「${saved.name}」をライブラリに追加しました',
+          ),
+        ),
+      );
+    }
   }
 
   // レシピ削除の確認ダイアログ

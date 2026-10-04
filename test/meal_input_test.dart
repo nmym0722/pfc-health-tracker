@@ -50,4 +50,46 @@ void main() {
     expect(find.text('本日の食事記録'), findsOneWidget);
     expect(find.text('テストチキン'), findsOneWidget);
   });
+
+  testWidgets('直接入力タブからマイレシピに保存できること', (WidgetTester tester) async {
+    await tester.pumpWidget(
+      const ProviderScope(
+        child: PfcTrackerApp(),
+      ),
+    );
+    await tester.pumpAndSettle();
+
+    // 1. 食事入力タブへ移動
+    await tester.tap(find.byIcon(Icons.add_circle_outline));
+    await tester.pumpAndSettle();
+
+    // 2. 直接入力タブを選択
+    await tester.tap(find.text('直接入力'));
+    await tester.pumpAndSettle();
+
+    // 3. 料理名とPFCを入力
+    await tester.enterText(find.widgetWithText(TextField, 'メニュー・食品名'), '特製プロテインパンケーキ');
+    await tester.enterText(find.widgetWithText(TextField, 'エネルギー (kcal)'), '420');
+    await tester.enterText(find.widgetWithText(TextField, 'P: タンパク質 (g)'), '35');
+    await tester.enterText(find.widgetWithText(TextField, 'F: 脂質 (g)'), '8');
+    await tester.enterText(find.widgetWithText(TextField, 'C: 炭水化物 (g)'), '50');
+
+    // 4. 「マイレシピに保存」ボタンをタップ
+    final saveRecipeButton = find.text('マイレシピに保存');
+    expect(saveRecipeButton, findsOneWidget);
+    await tester.tap(saveRecipeButton);
+    await tester.pumpAndSettle();
+
+    // 5. 確認ダイアログが表示されること
+    expect(find.text('マイレシピとして保存'), findsOneWidget);
+
+    // 6. ダイアログの「保存」ボタンをタップ
+    final dialogSaveButton = find.widgetWithText(FilledButton, '保存');
+    expect(dialogSaveButton, findsOneWidget);
+    await tester.tap(dialogSaveButton);
+    await tester.pumpAndSettle();
+
+    // 7. 保存成功のスナックバーが表示されること
+    expect(find.text('マイレシピ「特製プロテインパンケーキ」を保存しました'), findsOneWidget);
+  });
 }
