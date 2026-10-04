@@ -235,6 +235,7 @@ class HomeScreen extends ConsumerWidget {
         builder: (context) => MealInputScreen(
           initialMealType: type,
           targetDate: targetDate,
+          isModal: true,
         ),
       ),
     );

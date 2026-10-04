@@ -11,11 +11,13 @@ import '../main_navigation_screen.dart';
 class MealInputScreen extends ConsumerStatefulWidget {
   final MealType initialMealType;
   final DateTime? targetDate;
+  final bool isModal;
 
   const MealInputScreen({
     super.key,
     required this.initialMealType,
     this.targetDate,
+    this.isModal = false,
   });
 
   @override
@@ -102,6 +104,7 @@ class _MealInputScreenState extends ConsumerState<MealInputScreen>
 
     return Scaffold(
       appBar: AppBar(
+        automaticallyImplyLeading: widget.isModal,
         title: const Text('食事を入力'),
         bottom: TabBar(
           controller: _tabController,
@@ -789,7 +792,7 @@ class _MealInputScreenState extends ConsumerState<MealInputScreen>
     _carbsController.clear();
 
     // モーダルで開かれている場合はpop、ボトムナビからの場合は「今日」タブへ安全に遷移
-    if (Navigator.of(context).canPop()) {
+    if (widget.isModal && Navigator.of(context).canPop()) {
       Navigator.of(context).pop();
     } else {
       ref.read(navigationIndexProvider.notifier).state = 0;

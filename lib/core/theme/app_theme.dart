@@ -35,8 +35,18 @@ class AppTheme {
     );
   }
 
-  static ThemeData get lightTheme {
+  /// キャッシュされたThemeData（毎フレームのフォントオブジェクト再生成を抑止）
+  static final ThemeData lightTheme = _buildLightTheme();
+
+  static ThemeData _buildLightTheme() {
     final baseTextTheme = ThemeData.light().textTheme;
+    const fontFallbacks = [
+      'Noto Sans JP',
+      'Hiragino Sans',
+      'Meiryo',
+      'Yu Gothic',
+      'sans-serif',
+    ];
     
     // Noto Sans JP を適用し、ウェイトを w400(本文/ラベル) と w600(タイトル/数値) に統一
     final notoSansTextTheme = GoogleFonts.notoSansJpTextTheme(baseTextTheme).copyWith(
@@ -59,6 +69,8 @@ class AppTheme {
 
     return ThemeData(
       useMaterial3: true,
+      fontFamily: GoogleFonts.notoSansJp().fontFamily,
+      fontFamilyFallback: fontFallbacks,
       textTheme: notoSansTextTheme,
       colorScheme: const ColorScheme(
         brightness: Brightness.light,

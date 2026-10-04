@@ -1,8 +1,10 @@
 import 'dart:ui';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:google_fonts/google_fonts.dart';
 import 'package:intl/date_symbol_data_local.dart';
 import 'core/theme/app_theme.dart';
+import 'core/utils/web_splash_remover.dart';
 import 'providers/food_master_provider.dart';
 import 'providers/meal_provider.dart';
 import 'providers/user_provider.dart';
@@ -14,11 +16,31 @@ void main() async {
   WidgetsFlutterBinding.ensureInitialized();
   await initializeDateFormatting('ja_JP', null);
 
-  // ローカルストレージに保存されている各データを起動前に先読み
-  final savedProfile = await StorageService.loadUserProfile();
-  final savedWeights = await StorageService.loadWeightLogs();
-  final savedMeals = await StorageService.loadMeals();
-  final savedRecipes = await StorageService.loadRecipes();
+  // ローカルストレージ読み込みとフォントプリロードを並列実行して起動を最速化
+  final loadDataFuture = Future.wait([
+    StorageService.loadUserProfile(),
+    StorageService.loadWeightLogs(),
+    StorageService.loadMeals(),
+    StorageService.loadRecipes(),
+  ]);
+
+  // Noto Sans JP (Regular 400 & SemiBold 600) を最大800msだけ事前待機
+  // 取得が間に合わなくても端末のシステムフォント（Hiragino/Meiryo）ですぐに起動
+  final preloadFontsFuture = GoogleFonts.pendingFonts([
+    GoogleFonts.notoSansJp(fontWeight: FontWeight.w400),
+    GoogleFonts.notoSansJp(fontWeight: FontWeight.w600),
+  ]).timeout(const Duration(milliseconds: 800), onTimeout: () => []);
+
+  final results = await Future.wait([
+    loadDataFuture,
+    preloadFontsFuture,
+  ]);
+
+  final savedData = results[0] as List<dynamic>;
+  final savedProfile = savedData[0] as dynamic;
+  final savedWeights = savedData[1] as dynamic;
+  final savedMeals = savedData[2] as dynamic;
+  final savedRecipes = savedData[3] as dynamic;
 
   runApp(
     ProviderScope(
@@ -50,8 +72,22 @@ class AppScrollBehavior extends MaterialScrollBehavior {
   };
 }
 
-class PfcTrackerApp extends StatelessWidget {
+class PfcTrackerApp extends StatefulWidget {
   const PfcTrackerApp({super.key});
+
+  @override
+  State<PfcTrackerApp> createState() => _PfcTrackerAppState();
+}
+
+class _PfcTrackerAppState extends State<PfcTrackerApp> {
+  @override
+  void initState() {
+    super.initState();
+    // 最初のフレーム描画完了後にWebのスプラッシュ画面をフェードアウト
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      removeWebSplash();
+    });
+  }
 
   @override
   Widget build(BuildContext context) {
