@@ -6,6 +6,7 @@ import '../../models/recipe.dart';
 import '../../core/utils/amount_parser.dart';
 import '../../providers/meal_provider.dart';
 import '../../providers/food_master_provider.dart';
+import '../main_navigation_screen.dart';
 
 class MealInputScreen extends ConsumerStatefulWidget {
   final MealType initialMealType;
@@ -767,6 +768,34 @@ class _MealInputScreenState extends ConsumerState<MealInputScreen>
     );
   }
 
+  // 保存成功時の共通ハンドラ（UIリセット、通知、画面遷移）
+  void _onMealSavedSuccess(String message) {
+    if (!mounted) return;
+
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(content: Text(message)),
+    );
+
+    // ボウル食材と直接入力欄のリセット
+    setState(() {
+      _bowlIngredients.clear();
+      _selectedFoodForBowl = null;
+      _bowlAmountController.text = '100';
+    });
+    _nameController.clear();
+    _caloriesController.clear();
+    _proteinController.clear();
+    _fatController.clear();
+    _carbsController.clear();
+
+    // モーダルで開かれている場合はpop、ボトムナビからの場合は「今日」タブへ安全に遷移
+    if (Navigator.of(context).canPop()) {
+      Navigator.of(context).pop();
+    } else {
+      ref.read(navigationIndexProvider.notifier).state = 0;
+    }
+  }
+
   // ボウルの内容を食事記録に追加
   void _submitBowlToMeal() {
     if (_bowlIngredients.isEmpty) return;
@@ -785,17 +814,15 @@ class _MealInputScreenState extends ConsumerState<MealInputScreen>
       );
     }).toList();
 
+    final DateTime targetDate = widget.targetDate ?? ref.read(selectedDateProvider);
+
     ref.read(mealProvider.notifier).addMealItems(
-      date: widget.targetDate ?? DateTime.now(),
+      date: targetDate,
       type: _selectedMealType,
       items: mealItems,
     );
 
-    ScaffoldMessenger.of(context).showSnackBar(
-      SnackBar(content: Text('${_selectedMealType.label}に${mealItems.length}品の食材を記録しました')),
-    );
-
-    Navigator.of(context).pop();
+    _onMealSavedSuccess('${_selectedMealType.label}に${mealItems.length}品の食材を記録しました');
   }
 
   // マイレシピ保存ダイアログ
@@ -915,17 +942,15 @@ class _MealInputScreenState extends ConsumerState<MealInputScreen>
       );
     }).toList();
 
+    final DateTime targetDate = widget.targetDate ?? ref.read(selectedDateProvider);
+
     ref.read(mealProvider.notifier).addMealItems(
-      date: widget.targetDate ?? DateTime.now(),
+      date: targetDate,
       type: _selectedMealType,
       items: mealItems,
     );
 
-    ScaffoldMessenger.of(context).showSnackBar(
-      SnackBar(content: Text('「${recipe.name}」を${_selectedMealType.label}に記録しました')),
-    );
-
-    Navigator.of(context).pop();
+    _onMealSavedSuccess('「${recipe.name}」を${_selectedMealType.label}に記録しました');
   }
 
   // 直接入力を提出
@@ -949,12 +974,14 @@ class _MealInputScreenState extends ConsumerState<MealInputScreen>
       carbs: carbs,
     );
 
+    final DateTime targetDate = widget.targetDate ?? ref.read(selectedDateProvider);
+
     ref.read(mealProvider.notifier).addMealItem(
-      date: widget.targetDate ?? DateTime.now(),
+      date: targetDate,
       type: _selectedMealType,
       item: item,
     );
 
-    Navigator.of(context).pop();
+    _onMealSavedSuccess('${_selectedMealType.label}に「$name」を記録しました');
   }
 }

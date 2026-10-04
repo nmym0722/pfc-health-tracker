@@ -37,7 +37,6 @@ app.*.symbols
 app.*.map.json
 
 # Web related
-lib/generated_plugin_registrant.dart
 
 # Sensitive info & local config
 secrets_memo.txt

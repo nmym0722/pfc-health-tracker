@@ -1,20 +1,22 @@
 import 'package:flutter/material.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'home/home_screen.dart';
 import 'meal_input/meal_input_screen.dart';
 import 'weight/weight_screen.dart';
 import 'my_recipes/my_recipes_screen.dart';
 import '../models/meal_record.dart';
 
-class MainNavigationScreen extends StatefulWidget {
+/// ナビゲーションの現在のタブインデックスを管理するプロバイダー
+final navigationIndexProvider = StateProvider<int>((ref) => 0);
+
+class MainNavigationScreen extends ConsumerStatefulWidget {
   const MainNavigationScreen({super.key});
 
   @override
-  State<MainNavigationScreen> createState() => _MainNavigationScreenState();
+  ConsumerState<MainNavigationScreen> createState() => _MainNavigationScreenState();
 }
 
-class _MainNavigationScreenState extends State<MainNavigationScreen> {
-  int _currentIndex = 0;
-
+class _MainNavigationScreenState extends ConsumerState<MainNavigationScreen> {
   final List<Widget> _screens = [
     const HomeScreen(),
     const MealInputScreen(initialMealType: MealType.breakfast),
@@ -24,17 +26,17 @@ class _MainNavigationScreenState extends State<MainNavigationScreen> {
 
   @override
   Widget build(BuildContext context) {
+    final currentIndex = ref.watch(navigationIndexProvider);
+
     return Scaffold(
       body: IndexedStack(
-        index: _currentIndex,
+        index: currentIndex,
         children: _screens,
       ),
       bottomNavigationBar: NavigationBar(
-        selectedIndex: _currentIndex,
+        selectedIndex: currentIndex,
         onDestinationSelected: (index) {
-          setState(() {
-            _currentIndex = index;
-          });
+          ref.read(navigationIndexProvider.notifier).state = index;
         },
         destinations: const [
           NavigationDestination(

@@ -77,11 +77,13 @@ class _CalorieBalanceCardState extends ConsumerState<CalorieBalanceCard> {
               decoration: BoxDecoration(
                 color: report.recordedDays == 0
                     ? theme.colorScheme.surfaceContainerHighest.withOpacity(0.6)
-                    : report.canHaveCheatMeal
-                        ? theme.colorScheme.primaryContainer
-                        : report.calorieSavings < 0
-                            ? theme.colorScheme.errorContainer.withOpacity(0.6)
-                            : theme.colorScheme.surfaceContainerHighest,
+                    : report.recordedDays == 1
+                        ? theme.colorScheme.surfaceContainerHighest
+                        : report.canHaveCheatMeal
+                            ? theme.colorScheme.primaryContainer
+                            : report.calorieSavings < 0
+                                ? theme.colorScheme.errorContainer.withOpacity(0.6)
+                                : theme.colorScheme.surfaceContainerHighest,
                 borderRadius: BorderRadius.circular(12),
               ),
               child: Row(
@@ -89,18 +91,22 @@ class _CalorieBalanceCardState extends ConsumerState<CalorieBalanceCard> {
                   Icon(
                     report.recordedDays == 0
                         ? Icons.info_outline
-                        : report.canHaveCheatMeal
-                            ? Icons.stars
-                            : report.calorieSavings < 0
-                                ? Icons.warning_amber_rounded
-                                : Icons.info_outline,
+                        : report.recordedDays == 1
+                            ? Icons.hourglass_top_outlined
+                            : report.canHaveCheatMeal
+                                ? Icons.stars
+                                : report.calorieSavings < 0
+                                    ? Icons.warning_amber_rounded
+                                    : Icons.info_outline,
                     color: report.recordedDays == 0
                         ? theme.colorScheme.onSurfaceVariant
-                        : report.canHaveCheatMeal
-                            ? theme.colorScheme.onPrimaryContainer
-                            : report.calorieSavings < 0
-                                ? theme.colorScheme.onErrorContainer
-                                : theme.colorScheme.onSurfaceVariant,
+                        : report.recordedDays == 1
+                            ? theme.colorScheme.primary
+                            : report.canHaveCheatMeal
+                                ? theme.colorScheme.onPrimaryContainer
+                                : report.calorieSavings < 0
+                                    ? theme.colorScheme.onErrorContainer
+                                    : theme.colorScheme.onSurfaceVariant,
                     size: 24,
                   ),
                   const SizedBox(width: 10),
@@ -111,41 +117,49 @@ class _CalorieBalanceCardState extends ConsumerState<CalorieBalanceCard> {
                         Text(
                           report.recordedDays == 0
                               ? '食事記録を入力するとペース分析が始まります'
-                              : report.canHaveCheatMeal
-                                  ? 'チートデイOK！ (貯金: +$absSavings kcal)'
-                                  : report.calorieSavings < 0
-                                      ? '目標カロリー超過中 ($absSavings kcal オーバー)'
-                                      : '目標通り推移中 (貯金: +$absSavings kcal)',
+                              : report.recordedDays == 1
+                                  ? 'データ蓄積中 (確定1日分: 平均 ${report.averageDailyCalories.round()} kcal)'
+                                  : report.canHaveCheatMeal
+                                      ? 'チートデイOK！ (貯金: +$absSavings kcal)'
+                                      : report.calorieSavings < 0
+                                          ? '目標カロリー超過中 ($absSavings kcal オーバー)'
+                                          : '目標通り推移中 (貯金: +$absSavings kcal)',
                           style: TextStyle(
                             fontWeight: FontWeight.bold,
                             fontSize: 13,
                             color: report.recordedDays == 0
                                 ? theme.colorScheme.onSurface
-                                : report.canHaveCheatMeal
-                                    ? theme.colorScheme.onPrimaryContainer
-                                    : report.calorieSavings < 0
-                                        ? theme.colorScheme.onErrorContainer
-                                        : theme.colorScheme.onSurface,
+                                : report.recordedDays == 1
+                                    ? theme.colorScheme.onSurface
+                                    : report.canHaveCheatMeal
+                                        ? theme.colorScheme.onPrimaryContainer
+                                        : report.calorieSavings < 0
+                                            ? theme.colorScheme.onErrorContainer
+                                            : theme.colorScheme.onSurface,
                           ),
                         ),
                         const SizedBox(height: 2),
                         Text(
                           report.recordedDays == 0
                               ? '日々の食事を記録していくと、ここに着地予測やチートデイ診断が表示されます。'
-                              : report.canHaveCheatMeal
-                                  ? '目標よりカロリーを抑えられています。今週末にご褒美ミールを楽しめます！'
-                                  : report.calorieSavings < 0
-                                      ? '少しずつプラスになっています。数日間の食事を意識して調整しましょう。'
-                                      : '順調なペースです。チートデイを設けるにはあと少し貯金を作ると安心です。',
+                              : report.recordedDays == 1
+                                  ? '2日以上記録すると、週全体の着地予測とチートデイ診断が精度高く算出されます。'
+                                  : report.canHaveCheatMeal
+                                      ? '目標よりカロリーを抑えられています。今週末にご褒美ミールを楽しめます！'
+                                      : report.calorieSavings < 0
+                                          ? '少しずつプラスになっています。数日間の食事を意識して調整しましょう。'
+                                          : '順調なペースです。チートデイを設けるにはあと少し貯金を作ると安心です。',
                           style: TextStyle(
                             fontSize: 11,
                             color: report.recordedDays == 0
                                 ? theme.colorScheme.onSurfaceVariant
-                                : report.canHaveCheatMeal
-                                    ? theme.colorScheme.onPrimaryContainer.withOpacity(0.85)
-                                    : report.calorieSavings < 0
-                                        ? theme.colorScheme.onErrorContainer.withOpacity(0.85)
-                                        : theme.colorScheme.onSurfaceVariant,
+                                : report.recordedDays == 1
+                                    ? theme.colorScheme.onSurfaceVariant
+                                    : report.canHaveCheatMeal
+                                        ? theme.colorScheme.onPrimaryContainer.withOpacity(0.85)
+                                        : report.calorieSavings < 0
+                                            ? theme.colorScheme.onErrorContainer.withOpacity(0.85)
+                                            : theme.colorScheme.onSurfaceVariant,
                           ),
                         ),
                       ],
