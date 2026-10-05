@@ -1,4 +1,3 @@
-import 'dart:typed_data';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../../models/meal_record.dart';
@@ -33,10 +32,6 @@ class _MealInputScreenState extends ConsumerState<MealInputScreen>
   late TabController _tabController;
   late MealType _selectedMealType;
 
-  // 0. 写真・画像解析ステート
-  final _ocrService = NutritionOcrService();
-  bool _isAnalyzingImage = false;
-
   // 1. 直接入力用コントローラー
   final _nameController = TextEditingController();
   final _caloriesController = TextEditingController();
@@ -69,7 +64,7 @@ class _MealInputScreenState extends ConsumerState<MealInputScreen>
   @override
   void initState() {
     super.initState();
-    _tabController = TabController(length: 4, vsync: this);
+    _tabController = TabController(length: 3, vsync: this);
     _tabController.addListener(_handleTabChange);
     _selectedMealType = widget.initialMealType;
   }
@@ -80,70 +75,42 @@ class _MealInputScreenState extends ConsumerState<MealInputScreen>
     }
   }
 
-  /// 撮影・選択された画像の栄養成分表示解析ハンドラ
-  Future<void> _handleImageAnalysis(
-      Uint8List imageBytes, String mimeType) async {
-    setState(() {
-      _isAnalyzingImage = true;
-    });
+  /// カメラ画面をモーダル表示して栄養成分表示を読み取り
+  Future<void> _openCameraCapture() async {
+    final result = await Navigator.of(context).push<NutritionOcrResult>(
+      MaterialPageRoute(
+        builder: (context) => const CameraCaptureScreen(),
+        fullscreenDialog: true,
+      ),
+    );
 
-    try {
-      final result = await _ocrService.analyzeNutritionImage(
-        imageBytes,
-        mimeType: mimeType,
-      );
+    if (result == null || !mounted) return;
 
-      if (!mounted) return;
+    // メニュー・食品名は空欄のままにする
+    _nameController.text = '';
 
-      // 食品名・商品名の反映
-      if (result.foodName != null && result.foodName!.trim().isNotEmpty) {
-        _nameController.text = result.foodName!.trim();
-      } else if (_nameController.text.trim().isEmpty) {
-        _nameController.text = '栄養成分表示読取';
+    // 数値フォーマット（整数なら小数を省く）
+    String formatNum(double val) {
+      if (val == val.roundToDouble()) {
+        return val.toInt().toString();
       }
-
-      // 数値フォーマット（整数なら小数を省く）
-      String formatNum(double val) {
-        if (val == val.roundToDouble()) {
-          return val.toInt().toString();
-        }
-        return val.toStringAsFixed(1);
-      }
-
-      _caloriesController.text = formatNum(result.effectiveCalories);
-      _proteinController.text = formatNum(result.effectiveProtein);
-      _fatController.text = formatNum(result.effectiveFat);
-      _carbsController.text = formatNum(result.effectiveCarbs);
-
-      // 直接入力タブ（インデックス 1）へスムーズに切り替え
-      _tabController.animateTo(1);
-
-      final unitText = result.servingUnit != null
-          ? '（${result.servingUnit}）'
-          : '';
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(
-          content: Text('パッケージの栄養成分表示$unitTextを直接入力に反映しました！'),
-          backgroundColor: Theme.of(context).colorScheme.primary,
-          behavior: SnackBarBehavior.floating,
-        ),
-      );
-    } catch (e) {
-      if (!mounted) return;
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(
-          content: Text('栄養成分の解析に失敗しました: $e'),
-          backgroundColor: Theme.of(context).colorScheme.error,
-          behavior: SnackBarBehavior.floating,
-        ),
-      );
-    } finally {
-      if (mounted) {
-        setState(() {
-          _isAnalyzingImage = false;
-        });
-      }
+      return val.toStringAsFixed(1);
     }
+
+    _caloriesController.text = formatNum(result.effectiveCalories);
+    _proteinController.text = formatNum(result.effectiveProtein);
+    _fatController.text = formatNum(result.effectiveFat);
+    _carbsController.text = formatNum(result.effectiveCarbs);
+
+    final unitText =
+        result.servingUnit != null ? '（${result.servingUnit}）' : '';
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(
+        content: Text('パッケージの栄養成分表示$unitTextを反映しました！'),
+        backgroundColor: Theme.of(context).colorScheme.primary,
+        behavior: SnackBarBehavior.floating,
+      ),
+    );
   }
 
   @override
@@ -194,7 +161,6 @@ class _MealInputScreenState extends ConsumerState<MealInputScreen>
             Tab(icon: Icon(Icons.bookmark_border), text: 'マイリスト'),
             Tab(icon: Icon(Icons.edit_note), text: '直接入力'),
             Tab(icon: Icon(Icons.soup_kitchen), text: '食材合算'),
-            Tab(icon: Icon(Icons.camera_alt_outlined), text: '写真'),
           ],
         ),
       ),
@@ -209,12 +175,6 @@ class _MealInputScreenState extends ConsumerState<MealInputScreen>
 
           // 3. 食材マスタ合算（自炊モード）タブ
           _buildCompositeCookingTab(theme, filteredFoods),
-
-          // 4. 写真・栄養成分OCRタブ
-          CameraCaptureView(
-            onImageSelected: _handleImageAnalysis,
-            isAnalyzing: _isAnalyzingImage,
-          ),
         ],
       ),
       floatingActionButton: (_tabController.index == 2 && _selectedFoodForBowl == null)
@@ -284,7 +244,7 @@ class _MealInputScreenState extends ConsumerState<MealInputScreen>
                   color: theme.colorScheme.primary,
                 ),
                 tooltip: '写真から栄養成分を自動入力',
-                onPressed: () => _tabController.animateTo(3),
+                onPressed: _openCameraCapture,
               ),
             ),
           ),

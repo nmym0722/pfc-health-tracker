@@ -3,6 +3,69 @@ import 'package:camera/camera.dart';
 import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:image_picker/image_picker.dart';
+import '../../services/nutrition_ocr_service.dart';
+
+/// カメラ撮影モーダル画面
+class CameraCaptureScreen extends StatefulWidget {
+  const CameraCaptureScreen({super.key});
+
+  @override
+  State<CameraCaptureScreen> createState() => _CameraCaptureScreenState();
+}
+
+class _CameraCaptureScreenState extends State<CameraCaptureScreen> {
+  final _ocrService = NutritionOcrService();
+  bool _isAnalyzing = false;
+
+  Future<void> _handleImageSelected(Uint8List bytes, String mimeType) async {
+    setState(() {
+      _isAnalyzing = true;
+    });
+
+    try {
+      final result = await _ocrService.analyzeNutritionImage(
+        bytes,
+        mimeType: mimeType,
+      );
+      if (!mounted) return;
+      Navigator.of(context).pop(result);
+    } catch (e) {
+      if (!mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text('解析に失敗しました: $e'),
+          backgroundColor: Theme.of(context).colorScheme.error,
+        ),
+      );
+    } finally {
+      if (mounted) {
+        setState(() {
+          _isAnalyzing = false;
+        });
+      }
+    }
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return Scaffold(
+      backgroundColor: Colors.black,
+      appBar: AppBar(
+        backgroundColor: Colors.black,
+        foregroundColor: Colors.white,
+        title: const Text('栄養成分表示を撮影'),
+        leading: IconButton(
+          icon: const Icon(Icons.close),
+          onPressed: () => Navigator.of(context).pop(),
+        ),
+      ),
+      body: CameraCaptureView(
+        onImageSelected: _handleImageSelected,
+        isAnalyzing: _isAnalyzing,
+      ),
+    );
+  }
+}
 
 /// カメラ撮影 & カメラロール選択用のビュー
 class CameraCaptureView extends StatefulWidget {
