@@ -20,6 +20,7 @@ class MealItem {
   final String name;
   final String? foodId;
   final String? recipeId;
+  final String? recipeName;
   final double amount;
   final String unit;
   final double calories;
@@ -32,6 +33,7 @@ class MealItem {
     required this.name,
     this.foodId,
     this.recipeId,
+    this.recipeName,
     required this.amount,
     required this.unit,
     required this.calories,
@@ -40,12 +42,32 @@ class MealItem {
     required this.carbs,
   });
 
+  /// 関連するレシピ名を取得（recipeNameフィールド優先、未設定時はnameの末尾括弧から自動抽出）
+  String? get associatedRecipeName {
+    if (recipeName != null && recipeName!.trim().isNotEmpty) {
+      return recipeName!.trim();
+    }
+    final match = RegExp(r'[\s]*[\(（]([^()（）]+)[\)）]$').firstMatch(name);
+    if (match != null) {
+      return match.group(1)?.trim();
+    }
+    return null;
+  }
+
+  /// レシピ名を除いた食材本来の名称（例: 鶏むね肉（皮なし）（蒸し鶏ボウル） -> 鶏むね肉（皮なし））
+  String get cleanIngredientName {
+    final rName = associatedRecipeName;
+    if (rName == null) return name;
+    return name.replaceFirst(RegExp(r'[\s]*[\(（]' + RegExp.escape(rName) + r'[\)）]$'), '').trim();
+  }
+
   Map<String, dynamic> toJson() {
     return {
       'id': id,
       'name': name,
       'foodId': foodId,
       'recipeId': recipeId,
+      'recipeName': recipeName,
       'amount': amount,
       'unit': unit,
       'calories': calories,
@@ -61,6 +83,7 @@ class MealItem {
       name: json['name'] as String,
       foodId: json['foodId'] as String?,
       recipeId: json['recipeId'] as String?,
+      recipeName: json['recipeName'] as String?,
       amount: (json['amount'] as num).toDouble(),
       unit: json['unit'] as String,
       calories: (json['calories'] as num).toDouble(),

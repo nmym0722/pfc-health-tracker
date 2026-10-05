@@ -82,6 +82,25 @@ class MealNotifier extends StateNotifier<List<MealRecord>> {
     StorageService.saveMeals(state);
   }
 
+  /// 複数アイテムの一括削除（レシピグループ削除用）
+  void removeMealItems(String recordId, List<String> itemIds) {
+    final recordIndex = state.indexWhere((m) => m.id == recordId);
+    if (recordIndex < 0) return;
+
+    final targetRecord = state[recordIndex];
+    final updatedItems = targetRecord.items.where((i) => !itemIds.contains(i.id)).toList();
+
+    if (updatedItems.isEmpty) {
+      state = state.where((m) => m.id != recordId).toList();
+    } else {
+      final updatedRecord = targetRecord.copyWith(items: updatedItems);
+      final newState = [...state];
+      newState[recordIndex] = updatedRecord;
+      state = newState;
+    }
+    StorageService.saveMeals(state);
+  }
+
   /// 全食事データの消去
   void clearAll() {
     state = [];

@@ -201,6 +201,9 @@ class HomeScreen extends ConsumerWidget {
               onDeleteItemPressed: (recordId, itemId) {
                 ref.read(mealProvider.notifier).removeMealItem(recordId, itemId);
               },
+              onDeleteItemsPressed: (recordId, itemIds) {
+                ref.read(mealProvider.notifier).removeMealItems(recordId, itemIds);
+              },
             ),
             const SizedBox(height: 80), // FAB用スペース
           ],

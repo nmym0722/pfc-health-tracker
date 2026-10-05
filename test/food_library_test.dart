@@ -3,8 +3,6 @@ import 'package:flutter_test/flutter_test.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:intl/date_symbol_data_local.dart';
 import 'package:pfc_health_tracker/main.dart';
-import 'package:pfc_health_tracker/models/food_master.dart';
-import 'package:pfc_health_tracker/providers/food_master_provider.dart';
 
 void main() {
   setUpAll(() async {

@@ -92,4 +92,126 @@ void main() {
     // 7. 保存成功のスナックバーが表示されること
     expect(find.text('マイレシピ「特製プロテインパンケーキ」を保存しました'), findsOneWidget);
   });
+
+  testWidgets('食材合算タブで3つ以上の食材をスムーズにボウルに追加でき、ボウルボタンから内訳を確認・操作できること', (WidgetTester tester) async {
+    await tester.pumpWidget(
+      const ProviderScope(
+        child: PfcTrackerApp(),
+      ),
+    );
+    await tester.pumpAndSettle();
+
+    // 1. 食事入力タブへ移動
+    await tester.tap(find.byIcon(Icons.add_circle_outline));
+    await tester.pumpAndSettle();
+
+    // 2. 「食材合算」タブを選択
+    await tester.tap(find.text('食材合算'));
+    await tester.pumpAndSettle();
+
+    // 3. 検索バーが配置されていることを確認
+    final searchBar = find.byType(SearchBar);
+    expect(searchBar, findsOneWidget);
+
+    // 4. 右下のフローティングボウルボタン（初期は0品）が存在することを確認
+    expect(find.byType(FloatingActionButton), findsOneWidget);
+    expect(find.text('ボウル (0品)'), findsOneWidget);
+
+    // 5. 1つ目の食材（鶏むね肉 皮なし）を選択してボウルに追加
+    await tester.tap(find.text('鶏むね肉（皮なし）').first);
+    await tester.pumpAndSettle();
+    expect(find.text('ボウルに追加'), findsOneWidget);
+    await tester.tap(find.text('ボウルに追加'));
+    await tester.pumpAndSettle();
+
+    // 6. 2つ目の食材（鶏むね肉 皮つき）を選択してボウルに追加
+    await tester.tap(find.text('鶏むね肉（皮つき）').first);
+    await tester.pumpAndSettle();
+    expect(find.text('ボウルに追加'), findsOneWidget);
+    await tester.tap(find.text('ボウルに追加'));
+    await tester.pumpAndSettle();
+
+    // 7. 3つ目の食材（鶏もも肉 皮なし）を選択してボウルに追加（画面圧迫なくボタンが押せること）
+    await tester.tap(find.text('鶏もも肉（皮なし）').first);
+    await tester.pumpAndSettle();
+    expect(find.text('ボウルに追加'), findsOneWidget);
+    await tester.tap(find.text('ボウルに追加'));
+    await tester.pumpAndSettle();
+
+    // 8. ボウルボタンの品数が3品に更新されていること
+    expect(find.textContaining('ボウル ('), findsOneWidget);
+    expect(find.text('3'), findsOneWidget); // バッジ
+
+    // 9. ボウルボタンをタップして内訳モーダルを開く
+    await tester.tap(find.byType(FloatingActionButton));
+    await tester.pumpAndSettle();
+
+    // 10. 内訳モーダルに3つの食材と合計カロリー、記録ボタンが表示されること
+    expect(find.text('調理ボウル (3品)'), findsOneWidget);
+    expect(find.text('鶏むね肉（皮なし）'), findsWidgets);
+    expect(find.text('鶏むね肉（皮つき）'), findsWidgets);
+    expect(find.text('鶏もも肉（皮なし）'), findsWidgets);
+    expect(find.text('食事に記録'), findsOneWidget);
+
+    // 11. モーダルの「閉じる」アイコンをタップ
+    final closeButton = find.byTooltip('閉じる');
+    expect(closeButton, findsOneWidget);
+    await tester.tap(closeButton);
+    await tester.pumpAndSettle();
+
+    // 12. モーダルが閉じ、元の食材一覧画面に戻って食材が選択できること
+    expect(find.text('調理ボウル (3品)'), findsNothing);
+    expect(find.text('食材合算'), findsOneWidget);
+    expect(find.text('鶏むね肉（皮なし）'), findsOneWidget);
+  });
+
+  testWidgets('マイレシピを食事に追加したとき、ホーム画面でトグル開閉Tileとして合算表示され、開くまで内訳が折りたたまれていること', (WidgetTester tester) async {
+    await tester.pumpWidget(
+      const ProviderScope(
+        child: PfcTrackerApp(),
+      ),
+    );
+    await tester.pumpAndSettle();
+
+    // 1. 食事入力タブへ移動（デフォルトで「マイリスト」タブ）
+    await tester.tap(find.byIcon(Icons.add_circle_outline));
+    await tester.pumpAndSettle();
+
+    // 2. 初期シードされているマイレシピ「蒸し鶏とブロッコリーの筋肉ボウル」の「食事に追加」をタップ
+    final addRecipeButton = find.text('食事に追加').first;
+    expect(addRecipeButton, findsOneWidget);
+    await tester.tap(addRecipeButton);
+    await tester.pumpAndSettle();
+
+    // 3. ホーム画面に遷移していることを確認
+    expect(find.byType(MainNavigationScreen), findsOneWidget);
+    expect(find.text('本日の食事記録'), findsOneWidget);
+
+    // 4. ホーム画面にレシピ名「蒸し鶏とブロッコリーの筋肉ボウル」と「3品」バッジが表示されていること
+    expect(find.text('蒸し鶏とブロッコリーの筋肉ボウル'), findsOneWidget);
+    expect(find.text('3品'), findsOneWidget);
+
+    // 5. トグルを開く前は、内訳の個別食材（鶏むね肉など）は表示されていないこと
+    expect(find.text('鶏むね肉（皮なし）'), findsNothing);
+
+    // 6. レシピタイルまでスクロールしてトグルを開く
+    await tester.ensureVisible(find.text('蒸し鶏とブロッコリーの筋肉ボウル'));
+    await tester.pumpAndSettle();
+    await tester.tap(find.text('蒸し鶏とブロッコリーの筋肉ボウル'));
+    await tester.pumpAndSettle();
+
+    // 7. トグルが開いた後、内訳の各食材名が展開されて表示されること
+    expect(find.text('鶏むね肉（皮なし）'), findsOneWidget);
+    expect(find.text('ブロッコリー（ゆで100g）'), findsOneWidget);
+    expect(find.text('白米（炊飯後・お茶碗中盛り150g）'), findsOneWidget);
+
+    // 8. もう一度タップしてトグルを閉じる
+    await tester.tap(find.text('蒸し鶏とブロッコリーの筋肉ボウル'));
+    await tester.pumpAndSettle();
+
+    // 9. 再び内訳が折りたたまれて非表示になること
+    expect(find.text('鶏むね肉（皮なし）'), findsNothing);
+    expect(find.text('蒸し鶏とブロッコリーの筋肉ボウル'), findsOneWidget);
+  });
 }
+
