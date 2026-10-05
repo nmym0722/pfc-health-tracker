@@ -4,6 +4,6 @@
   "private": true,
   "scripts": {
     "build": "flutter build web",
-    "deploy": "flutter build web && cd build/web && npx vercel --prod --scope toeicapps --yes"
+    "deploy": "flutter build web && cd build/web && npx vercel --prod --yes"
   }
 }
