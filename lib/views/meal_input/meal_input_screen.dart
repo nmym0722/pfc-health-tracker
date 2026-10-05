@@ -6,7 +6,6 @@ import '../../models/recipe.dart';
 import '../../core/utils/amount_parser.dart';
 import '../../providers/meal_provider.dart';
 import '../../providers/food_master_provider.dart';
-import '../../services/nutrition_ocr_service.dart';
 import '../common/food_edit_dialog.dart';
 import '../main_navigation_screen.dart';
 import 'camera_capture_view.dart';
@@ -75,14 +74,9 @@ class _MealInputScreenState extends ConsumerState<MealInputScreen>
     }
   }
 
-  /// カメラ画面をモーダル表示して栄養成分表示を読み取り
+  /// 栄養成分表示の写真撮影・画像選択シートを表示
   Future<void> _openCameraCapture() async {
-    final result = await Navigator.of(context).push<NutritionOcrResult>(
-      MaterialPageRoute(
-        builder: (context) => const CameraCaptureScreen(),
-        fullscreenDialog: true,
-      ),
-    );
+    final result = await NutritionPhotoPickerSheet.show(context);
 
     if (result == null || !mounted) return;
 
