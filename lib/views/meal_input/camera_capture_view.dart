@@ -1,6 +1,6 @@
 import 'package:flutter/material.dart';
-import 'package:image_picker/image_picker.dart';
 import '../../services/nutrition_ocr_service.dart';
+import '../../core/utils/image_picker_helper.dart';
 
 /// 栄養成分表示の写真撮影・画像選択モーダルシート
 class NutritionPhotoPickerSheet extends StatefulWidget {
@@ -23,22 +23,19 @@ class NutritionPhotoPickerSheet extends StatefulWidget {
 
 class _NutritionPhotoPickerSheetState extends State<NutritionPhotoPickerSheet> {
   final _ocrService = NutritionOcrService();
-  final _picker = ImagePicker();
   bool _isAnalyzing = false;
   String? _statusMessage;
 
   /// カメラまたはギャラリーから画像を取得して解析
-  Future<void> _pickAndAnalyze(ImageSource source) async {
+  Future<void> _pickAndAnalyze({required bool isCamera}) async {
     if (_isAnalyzing) return;
 
     try {
-      // ユーザーの直接タップ操作内で即座に呼び出し
-      final XFile? pickedFile = await _picker.pickImage(
-        source: source,
-        preferredCameraDevice: CameraDevice.rear,
-      );
+      final pickedData = isCamera
+          ? await AppImagePicker.takePhoto()
+          : await AppImagePicker.pickFromGallery();
 
-      if (pickedFile == null) {
+      if (pickedData == null) {
         // ユーザーが選択をキャンセルした場合
         return;
       }
@@ -48,12 +45,9 @@ class _NutritionPhotoPickerSheetState extends State<NutritionPhotoPickerSheet> {
         _statusMessage = '栄養成分表示をAIが解析中...';
       });
 
-      final bytes = await pickedFile.readAsBytes();
-      final mimeType = pickedFile.mimeType ?? 'image/jpeg';
-
       final result = await _ocrService.analyzeNutritionImage(
-        bytes,
-        mimeType: mimeType,
+        pickedData.bytes,
+        mimeType: pickedData.mimeType,
       );
 
       if (!mounted) return;
@@ -153,7 +147,7 @@ class _NutritionPhotoPickerSheetState extends State<NutritionPhotoPickerSheet> {
               // 選択アクションボタン
               // 1. カメラで撮影
               FilledButton.icon(
-                onPressed: () => _pickAndAnalyze(ImageSource.camera),
+                onPressed: () => _pickAndAnalyze(isCamera: true),
                 icon: const Icon(Icons.camera_alt_outlined),
                 label: const Text('カメラで撮影する'),
                 style: FilledButton.styleFrom(
@@ -167,7 +161,7 @@ class _NutritionPhotoPickerSheetState extends State<NutritionPhotoPickerSheet> {
 
               // 2. 写真ライブラリから選択
               OutlinedButton.icon(
-                onPressed: () => _pickAndAnalyze(ImageSource.gallery),
+                onPressed: () => _pickAndAnalyze(isCamera: false),
                 icon: const Icon(Icons.photo_library_outlined),
                 label: const Text('写真ライブラリ・ファイルから選択'),
                 style: OutlinedButton.styleFrom(
