@@ -100,6 +100,8 @@ class MealRecord {
   final MealType type;
   final List<MealItem> items;
   final DateTime createdAt;
+  /// その日の全食事記録が完了したか（動的TDEE適応の計算対象にするかどうかの判定）
+  final bool isDayCompleted;
 
   const MealRecord({
     required this.id,
@@ -107,6 +109,7 @@ class MealRecord {
     required this.type,
     required this.items,
     required this.createdAt,
+    this.isDayCompleted = true,
   });
 
   double get totalCalories => items.fold(0.0, (sum, item) => sum + item.calories);
@@ -120,6 +123,7 @@ class MealRecord {
     MealType? type,
     List<MealItem>? items,
     DateTime? createdAt,
+    bool? isDayCompleted,
   }) {
     return MealRecord(
       id: id ?? this.id,
@@ -127,6 +131,7 @@ class MealRecord {
       type: type ?? this.type,
       items: items ?? this.items,
       createdAt: createdAt ?? this.createdAt,
+      isDayCompleted: isDayCompleted ?? this.isDayCompleted,
     );
   }
 
@@ -137,6 +142,7 @@ class MealRecord {
       'type': type.name,
       'items': items.map((i) => i.toJson()).toList(),
       'createdAt': createdAt.toIso8601String(),
+      'isDayCompleted': isDayCompleted,
     };
   }
 
@@ -152,6 +158,7 @@ class MealRecord {
           .map((i) => MealItem.fromJson(i as Map<String, dynamic>))
           .toList(),
       createdAt: DateTime.parse(json['createdAt'] as String),
+      isDayCompleted: json['isDayCompleted'] as bool? ?? true,
     );
   }
 }

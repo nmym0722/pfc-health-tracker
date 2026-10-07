@@ -47,6 +47,7 @@ class BmrCalculator {
   }
 
   /// 4. 【仕様F-4】体重更新時の動的目標カロリー & PFC算定
+  /// [adaptedTdee] が指定された場合は、数式による推定TDEEではなくエネルギー保存則から逆算された実効TDEEを基準とします。
   static UserGoals calculateAdaptiveGoals({
     required double currentWeight,
     required double targetWeight,
@@ -57,18 +58,21 @@ class BmrCalculator {
     required GoalType goalType,
     required DateTime targetDate,
     DateTime? currentDate,
+    double? adaptedTdee,
   }) {
     final now = currentDate ?? DateTime.now();
     final daysRemaining = targetDate.difference(now).inDays;
     final validDays = daysRemaining > 0 ? daysRemaining : 1;
 
-    final tdee = calculateTdee(
-      weight: currentWeight,
-      height: height,
-      age: age,
-      gender: gender,
-      activityLevel: activityLevel,
-    );
+    // 基準TDEE: 動的適応TDEEがあればそれを採用、なければハリス・ベネディクト式で算出
+    final baseTdee = adaptedTdee ??
+        calculateTdee(
+          weight: currentWeight,
+          height: height,
+          age: age,
+          gender: gender,
+          activityLevel: activityLevel,
+        );
 
     double dailyCalorieAdjustment = 0.0;
     final weightDiff = currentWeight - targetWeight; // 減量の場合は正の値
@@ -89,9 +93,9 @@ class BmrCalculator {
       }
     }
 
-    double targetCalories = tdee + dailyCalorieAdjustment;
+    double targetCalories = baseTdee + dailyCalorieAdjustment;
 
-    // BMR未満にならないようセーフティチェック
+    // BMR未満にならないようセーフティチェック（BMRフロア値防衛）
     final bmr = calculateBmr(
       weight: currentWeight,
       height: height,

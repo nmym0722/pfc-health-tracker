@@ -1,12 +1,15 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:intl/intl.dart';
+import '../../core/utils/demo_data_generator.dart';
 import '../../models/meal_record.dart';
-import '../../providers/user_provider.dart';
 import '../../providers/meal_provider.dart';
+import '../../providers/refeed_provider.dart';
 import 'widgets/pfc_summary_card.dart';
 import 'widgets/calorie_balance_card.dart';
 import 'widgets/meal_timeline_section.dart';
+import 'widgets/refeed_proposal_card.dart';
+import 'widgets/guardrail_alert_banner.dart';
 import '../meal_input/meal_input_screen.dart';
 import '../profile/profile_settings_screen.dart';
 
@@ -16,7 +19,7 @@ class HomeScreen extends ConsumerWidget {
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     final theme = Theme.of(context);
-    final userProfile = ref.watch(userProvider);
+    final effectiveGoals = ref.watch(effectiveDailyGoalsProvider);
     final selectedDate = ref.watch(selectedDateProvider);
     final meals = ref.watch(selectedDateMealsProvider);
     final totals = ref.watch(selectedDateTotalsProvider);
@@ -34,6 +37,18 @@ class HomeScreen extends ConsumerWidget {
       appBar: AppBar(
         title: const Text('PFC トラッカー'),
         actions: [
+          IconButton(
+            icon: const Icon(Icons.science_outlined),
+            tooltip: '検証用デモデータ（14日分）を一括投入',
+            onPressed: () async {
+              await DemoDataGenerator.loadDemoData(ref);
+              if (context.mounted) {
+                ScaffoldMessenger.of(context).showSnackBar(
+                  const SnackBar(content: Text('検証用デモデータ（14日分）を投入しました！')),
+                );
+              }
+            },
+          ),
           IconButton(
             icon: const Icon(Icons.settings_outlined),
             tooltip: '目標・プロフィール設定',
@@ -153,18 +168,25 @@ class HomeScreen extends ConsumerWidget {
                 ),
               ),
             ),
-            const SizedBox(height: 16),
+            const SizedBox(height: 12),
 
-            // 2. 円形カロリーチャート & PFCサマリーカード
+            // 安全ガードレール警告・対話バナー（停滞期プラトー・BMR下限割れリスク）
+            const GuardrailAlertBanner(),
+
+            // リフィード（ハイカーボデイ）専用提案カード
+            const RefeedProposalCard(),
+            const SizedBox(height: 8),
+
+            // 2. 円形カロリーチャート & PFCサマリーカード（リフィード適用連動）
             PfcSummaryCard(
-              targetCalories: userProfile.goals.targetCalories,
+              targetCalories: effectiveGoals.targetCalories,
               currentCalories: totals['calories']!,
               categoryCalories: categoryCalories,
-              targetProtein: userProfile.goals.targetProtein,
+              targetProtein: effectiveGoals.targetProtein,
               currentProtein: totals['protein']!,
-              targetFat: userProfile.goals.targetFat,
+              targetFat: effectiveGoals.targetFat,
               currentFat: totals['fat']!,
-              targetCarbs: userProfile.goals.targetCarbs,
+              targetCarbs: effectiveGoals.targetCarbs,
               currentCarbs: totals['carbs']!,
             ),
             const SizedBox(height: 16),

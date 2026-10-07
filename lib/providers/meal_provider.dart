@@ -307,6 +307,68 @@ CalorieBalanceReport _calculateBalanceReport(Ref ref, int days, [DateTime? custo
   );
 }
 
+/// 直近7日間のローリング集計レポートモデル
+class Rolling7DaysReport {
+  final int recordedDays;
+  final double averageDailyCalories;
+  final double targetCalories;
+  final double differenceFromTarget;
+  final bool isWithinTarget;
+  final List<double> dailyCaloriesList;
+
+  const Rolling7DaysReport({
+    required this.recordedDays,
+    required this.averageDailyCalories,
+    required this.targetCalories,
+    required this.differenceFromTarget,
+    required this.isWithinTarget,
+    required this.dailyCaloriesList,
+  });
+}
+
+/// 直近7日間（今日を含まない過去7日間: today-7 〜 yesterday）のローリング集計プロバイダー
+final rolling7DaysReportProvider = Provider.autoDispose<Rolling7DaysReport>((ref) {
+  final meals = ref.watch(mealProvider);
+  final user = ref.watch(userProvider);
+
+  final now = DateTime.now();
+  final today = DateTime(now.year, now.month, now.day);
+  final yesterday = today.subtract(const Duration(days: 1));
+  final sevenDaysAgo = today.subtract(const Duration(days: 7));
+
+  final Map<String, double> dailyMap = {};
+  for (final m in meals) {
+    final d = DateTime(m.date.year, m.date.month, m.date.day);
+    if (!d.isBefore(sevenDaysAgo) && !d.isAfter(yesterday)) {
+      final key = '${d.year}-${d.month.toString().padLeft(2, '0')}-${d.day.toString().padLeft(2, '0')}';
+      dailyMap[key] = (dailyMap[key] ?? 0.0) + m.totalCalories;
+    }
+  }
+
+  final recordedDays = dailyMap.length;
+  final target = user.goals.targetCalories;
+
+  final double avg;
+  if (recordedDays > 0) {
+    final total = dailyMap.values.fold(0.0, (a, b) => a + b);
+    avg = total / recordedDays;
+  } else {
+    avg = target;
+  }
+
+  final diff = avg - target;
+  final isWithin = diff.abs() <= 150.0;
+
+  return Rolling7DaysReport(
+    recordedDays: recordedDays,
+    averageDailyCalories: avg,
+    targetCalories: target,
+    differenceFromTarget: diff,
+    isWithinTarget: isWithin,
+    dailyCaloriesList: dailyMap.values.toList(),
+  );
+});
+
 /// 直近（週）のカロリー収支プロバイダー
 final weekBalanceProvider = Provider.autoDispose<CalorieBalanceReport>((ref) {
   return _calculateBalanceReport(ref, 7);

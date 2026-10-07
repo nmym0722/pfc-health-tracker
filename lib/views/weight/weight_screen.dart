@@ -18,6 +18,7 @@ class _WeightScreenState extends ConsumerState<WeightScreen> {
   final _weightController = TextEditingController();
   final _fatController = TextEditingController();
   DateTime _selectedDate = DateTime.now();
+  bool _isCheatDay = false;
 
   @override
   void dispose() {
@@ -45,6 +46,8 @@ class _WeightScreenState extends ConsumerState<WeightScreen> {
     final theme = Theme.of(context);
     final userProfile = ref.watch(userProvider);
     final weightLogs = ref.watch(weightProvider);
+    final emaPoints = ref.watch(weightEmaSeriesProvider);
+    final latestEma = ref.watch(latestWeightEmaProvider);
 
     // ログを新しい日付順（降順）に並べたリスト
     final sortedLogsDesc = [...weightLogs]..sort((a, b) => b.date.compareTo(a.date));
@@ -53,6 +56,11 @@ class _WeightScreenState extends ConsumerState<WeightScreen> {
         _selectedDate.month == DateTime.now().month &&
         _selectedDate.day == DateTime.now().day;
     final dateLabel = DateFormat('yyyy年M月d日 (E)', 'ja_JP').format(_selectedDate);
+
+    // 水分ノイズ（実測 - EMA）の推定
+    final double? waterNoise = (latestEma != null && weightLogs.isNotEmpty)
+        ? (sortedLogsDesc.first.weight - latestEma.emaWeight)
+        : null;
 
     return Scaffold(
       appBar: AppBar(
@@ -76,15 +84,19 @@ class _WeightScreenState extends ConsumerState<WeightScreen> {
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            // 1. 体重推移折れ線グラフ (目標体重ライン & 日付/体重軸付き)
+            // 1. 体重推移折れ線グラフ (7日EMA曲線 & 計画ペース破線 & 目標ライン)
             WeightLineChart(
               logs: weightLogs,
+              emaPoints: emaPoints,
               targetWeight: userProfile.targetWeight,
-              height: 220.0,
+              initialWeight: userProfile.currentWeight,
+              startDate: userProfile.programStartDate,
+              targetDate: userProfile.targetDate,
+              height: 230.0,
             ),
-            const SizedBox(height: 24),
+            const SizedBox(height: 20),
 
-            // 2. 現在のステータス情報カード
+            // 2. 現在のステータス情報カード (EMAトレンド & 水分ノイズ)
             Card(
               elevation: 0,
               shape: RoundedRectangleBorder(
@@ -92,45 +104,53 @@ class _WeightScreenState extends ConsumerState<WeightScreen> {
                 side: BorderSide(color: theme.colorScheme.outlineVariant),
               ),
               child: Padding(
-                padding: const EdgeInsets.all(20.0),
+                padding: const EdgeInsets.all(18.0),
                 child: Column(
                   children: [
                     Row(
                       mainAxisAlignment: MainAxisAlignment.spaceAround,
                       children: [
                         _StatItem(
-                          label: '現在の体重',
-                          value: '${userProfile.currentWeight} kg',
+                          label: '7日EMAトレンド',
+                          value: latestEma != null
+                              ? '${latestEma.emaWeight.toStringAsFixed(1)} kg'
+                              : '${userProfile.currentWeight} kg',
                           color: theme.colorScheme.primary,
                         ),
                         Container(height: 40, width: 1, color: theme.colorScheme.outlineVariant),
                         _StatItem(
-                          label: '目標体重',
-                          value: '${userProfile.targetWeight} kg',
+                          label: '直近実測値',
+                          value: sortedLogsDesc.isNotEmpty
+                              ? '${sortedLogsDesc.first.weight} kg'
+                              : '${userProfile.currentWeight} kg',
                           color: theme.colorScheme.onSurface,
                         ),
                         Container(height: 40, width: 1, color: theme.colorScheme.outlineVariant),
                         _StatItem(
-                          label: '目標差分',
-                          value: '${(userProfile.currentWeight - userProfile.targetWeight).toStringAsFixed(1)} kg',
-                          color: theme.colorScheme.secondary,
+                          label: '水分ノイズ推定',
+                          value: waterNoise != null
+                              ? '${waterNoise >= 0 ? '+' : ''}${waterNoise.toStringAsFixed(1)} kg'
+                              : '±0.0 kg',
+                          color: (waterNoise != null && waterNoise.abs() > 0.5)
+                              ? theme.colorScheme.tertiary
+                              : theme.colorScheme.secondary,
                         ),
                       ],
                     ),
-                    const SizedBox(height: 16),
+                    const SizedBox(height: 14),
                     Container(
                       padding: const EdgeInsets.all(12),
                       decoration: BoxDecoration(
-                        color: theme.colorScheme.primaryContainer.withOpacity(0.5),
-                        borderRadius: BorderRadius.circular(8),
+                        color: theme.colorScheme.primaryContainer.withOpacity(0.4),
+                        borderRadius: BorderRadius.circular(10),
                       ),
                       child: Row(
                         children: [
-                          Icon(Icons.auto_mode, color: theme.colorScheme.primary, size: 20),
+                          Icon(Icons.auto_awesome, color: theme.colorScheme.primary, size: 20),
                           const SizedBox(width: 10),
                           Expanded(
                             child: Text(
-                              '新しい体重を記録すると、推移グラフが更新され、達成期日までの日々の目標カロリーとPFC配分が自動で再計算されます。',
+                              '日々の水分ブレ（塩分・炭水化物による±1〜2kgの変動）を7日EMAで自動除去し、身体の本質的な脂肪燃焼トレンドを追跡しています。',
                               style: theme.textTheme.bodySmall?.copyWith(
                                 color: theme.colorScheme.onPrimaryContainer,
                               ),
@@ -145,7 +165,7 @@ class _WeightScreenState extends ConsumerState<WeightScreen> {
             ),
             const SizedBox(height: 24),
 
-            // 3. 体重入力フォーム（日付選択付き）
+            // 3. 体重入力フォーム（日付選択 & チートデイトグル付き）
             Row(
               mainAxisAlignment: MainAxisAlignment.spaceBetween,
               children: [
@@ -214,12 +234,37 @@ class _WeightScreenState extends ConsumerState<WeightScreen> {
                 ),
               ],
             ),
+            const SizedBox(height: 10),
+
+            // ハイカーボ/外食（チートデイ）トグル
+            Container(
+              decoration: BoxDecoration(
+                border: Border.all(color: theme.colorScheme.outlineVariant),
+                borderRadius: BorderRadius.circular(10),
+              ),
+              child: SwitchListTile(
+                value: _isCheatDay,
+                onChanged: (val) {
+                  setState(() {
+                    _isCheatDay = val;
+                  });
+                },
+                secondary: Icon(
+                  Icons.restaurant_outlined,
+                  color: _isCheatDay ? theme.colorScheme.tertiary : theme.colorScheme.onSurfaceVariant,
+                ),
+                title: const Text('昨日はハイカーボ / 外食でしたか？', style: TextStyle(fontSize: 13, fontWeight: FontWeight.bold)),
+                subtitle: const Text('翌日の体重急増（水分貯留）をEMA計算で自動減衰（20%重み）します', style: TextStyle(fontSize: 11)),
+                dense: true,
+              ),
+            ),
             const SizedBox(height: 14),
+
             ElevatedButton.icon(
               onPressed: _submitWeight,
               icon: const Icon(Icons.check),
               label: Text(
-                isToday ? '記録して目標カロリーを自動更新' : '$dateLabel の体重を記録',
+                isToday ? '記録してEMAトレンドと目標を更新' : '$dateLabel の体重を記録',
               ),
               style: ElevatedButton.styleFrom(
                 minimumSize: const Size.fromHeight(48),
@@ -292,6 +337,24 @@ class _WeightScreenState extends ConsumerState<WeightScreen> {
                                         fontWeight: FontWeight.bold,
                                       ),
                                     ),
+                                    if (log.isCheatDay) ...[
+                                      const SizedBox(width: 8),
+                                      Container(
+                                        padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
+                                        decoration: BoxDecoration(
+                                          color: theme.colorScheme.tertiaryContainer,
+                                          borderRadius: BorderRadius.circular(4),
+                                        ),
+                                        child: Text(
+                                          '外食/チート',
+                                          style: TextStyle(
+                                            fontSize: 10,
+                                            fontWeight: FontWeight.bold,
+                                            color: theme.colorScheme.onTertiaryContainer,
+                                          ),
+                                        ),
+                                      ),
+                                    ],
                                     if (diff != null) ...[
                                       const SizedBox(width: 8),
                                       Container(
@@ -308,8 +371,8 @@ class _WeightScreenState extends ConsumerState<WeightScreen> {
                                             fontSize: 10,
                                             fontWeight: FontWeight.bold,
                                             color: diff <= 0
-                                                ? theme.colorScheme.onPrimaryContainer
-                                                : theme.colorScheme.onErrorContainer,
+                                              ? theme.colorScheme.onPrimaryContainer
+                                              : theme.colorScheme.onErrorContainer,
                                           ),
                                         ),
                                       ),
@@ -371,18 +434,22 @@ class _WeightScreenState extends ConsumerState<WeightScreen> {
 
     final bodyFat = double.tryParse(_fatController.text);
 
-    // 日付指定で体重を追加（グラフと自動目標計算フックが即座に同期・更新されます）
+    // 日付指定で体重を追加（チートフラグ付き、グラフと自動目標計算フックが即座に同期）
     ref.read(weightProvider.notifier).addWeightLog(
       weight,
       date: _selectedDate,
       bodyFat: bodyFat,
+      isCheatDay: _isCheatDay,
     );
 
     _weightController.clear();
     _fatController.clear();
+    setState(() {
+      _isCheatDay = false;
+    });
 
     ScaffoldMessenger.of(context).showSnackBar(
-      const SnackBar(content: Text('体重を記録し、推移グラフと目標カロリーを更新しました。')),
+      const SnackBar(content: Text('体重を記録し、EMA推移グラフと目標カロリーを更新しました。')),
     );
   }
 
@@ -391,6 +458,7 @@ class _WeightScreenState extends ConsumerState<WeightScreen> {
     final editWeightController = TextEditingController(text: log.weight.toString());
     final editFatController = TextEditingController(text: log.bodyFat?.toString() ?? '');
     DateTime editDate = log.date;
+    bool editCheatDay = log.isCheatDay;
 
     await showDialog(
       context: context,
@@ -444,6 +512,18 @@ class _WeightScreenState extends ConsumerState<WeightScreen> {
                         suffixText: '%',
                       ),
                     ),
+                    const SizedBox(height: 12),
+                    SwitchListTile(
+                      contentPadding: EdgeInsets.zero,
+                      value: editCheatDay,
+                      onChanged: (val) {
+                        setDialogState(() {
+                          editCheatDay = val;
+                        });
+                      },
+                      title: const Text('ハイカーボ / 外食日', style: TextStyle(fontSize: 13, fontWeight: FontWeight.bold)),
+                      subtitle: const Text('翌日データにEMA減衰を適用', style: TextStyle(fontSize: 11)),
+                    ),
                   ],
                 ),
               ),
@@ -463,6 +543,7 @@ class _WeightScreenState extends ConsumerState<WeightScreen> {
                       weight: newWeight,
                       date: editDate,
                       bodyFat: newFat,
+                      isCheatDay: editCheatDay,
                     );
                     Navigator.of(dialogCtx).pop();
 

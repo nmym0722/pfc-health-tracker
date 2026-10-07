@@ -98,6 +98,83 @@ class UserGoals {
   }
 }
 
+/// リフィード（ハイカーボデイ）設定
+class RefeedSettings {
+  /// 定期的な計画的リフィードを有効にするか
+  final bool isScheduledRefeedEnabled;
+  /// 定期リフィードの指定曜日（DateTime.monday=1 〜 DateTime.sunday=7, デフォルト: 7=日曜）
+  final int scheduledDayOfWeek;
+  /// 先行ボーナスリフィードを許可するか
+  final bool isBonusRefeedEnabled;
+
+  const RefeedSettings({
+    this.isScheduledRefeedEnabled = false,
+    this.scheduledDayOfWeek = DateTime.sunday,
+    this.isBonusRefeedEnabled = true,
+  });
+
+  RefeedSettings copyWith({
+    bool? isScheduledRefeedEnabled,
+    int? scheduledDayOfWeek,
+    bool? isBonusRefeedEnabled,
+  }) {
+    return RefeedSettings(
+      isScheduledRefeedEnabled: isScheduledRefeedEnabled ?? this.isScheduledRefeedEnabled,
+      scheduledDayOfWeek: scheduledDayOfWeek ?? this.scheduledDayOfWeek,
+      isBonusRefeedEnabled: isBonusRefeedEnabled ?? this.isBonusRefeedEnabled,
+    );
+  }
+
+  Map<String, dynamic> toJson() {
+    return {
+      'isScheduledRefeedEnabled': isScheduledRefeedEnabled,
+      'scheduledDayOfWeek': scheduledDayOfWeek,
+      'isBonusRefeedEnabled': isBonusRefeedEnabled,
+    };
+  }
+
+  factory RefeedSettings.fromJson(Map<String, dynamic> json) {
+    return RefeedSettings(
+      isScheduledRefeedEnabled: json['isScheduledRefeedEnabled'] as bool? ?? false,
+      scheduledDayOfWeek: json['scheduledDayOfWeek'] as int? ?? DateTime.sunday,
+      isBonusRefeedEnabled: json['isBonusRefeedEnabled'] as bool? ?? true,
+    );
+  }
+}
+
+/// 動的適応TDEEの更新履歴エントリ
+class AdaptedTdeeHistoryEntry {
+  final DateTime date;
+  final double adaptedTdee;
+  final double weightTrendSlopePerDay;
+  final String statusMessage;
+
+  const AdaptedTdeeHistoryEntry({
+    required this.date,
+    required this.adaptedTdee,
+    required this.weightTrendSlopePerDay,
+    required this.statusMessage,
+  });
+
+  Map<String, dynamic> toJson() {
+    return {
+      'date': date.toIso8601String(),
+      'adaptedTdee': adaptedTdee,
+      'weightTrendSlopePerDay': weightTrendSlopePerDay,
+      'statusMessage': statusMessage,
+    };
+  }
+
+  factory AdaptedTdeeHistoryEntry.fromJson(Map<String, dynamic> json) {
+    return AdaptedTdeeHistoryEntry(
+      date: DateTime.parse(json['date'] as String),
+      adaptedTdee: (json['adaptedTdee'] as num).toDouble(),
+      weightTrendSlopePerDay: (json['weightTrendSlopePerDay'] as num?)?.toDouble() ?? 0.0,
+      statusMessage: json['statusMessage'] as String? ?? '',
+    );
+  }
+}
+
 class UserProfile {
   final String id;
   final String name;
@@ -110,6 +187,12 @@ class UserProfile {
   final GoalType goalType;
   final DateTime targetDate;
   final UserGoals goals;
+  final RefeedSettings refeedSettings;
+  final List<AdaptedTdeeHistoryEntry> tdeeHistory;
+  /// 動的適応された最新の実効TDEE（nullの場合は計算式ベースの初期TDEEを使用）
+  final double? currentAdaptedTdee;
+  /// 減量/増量プログラムの開始日（ウォームアップ判定等に使用）
+  final DateTime? programStartDate;
 
   const UserProfile({
     required this.id,
@@ -123,6 +206,10 @@ class UserProfile {
     required this.goalType,
     required this.targetDate,
     required this.goals,
+    this.refeedSettings = const RefeedSettings(),
+    this.tdeeHistory = const [],
+    this.currentAdaptedTdee,
+    this.programStartDate,
   });
 
   UserProfile copyWith({
@@ -137,6 +224,10 @@ class UserProfile {
     GoalType? goalType,
     DateTime? targetDate,
     UserGoals? goals,
+    RefeedSettings? refeedSettings,
+    List<AdaptedTdeeHistoryEntry>? tdeeHistory,
+    double? currentAdaptedTdee,
+    DateTime? programStartDate,
   }) {
     return UserProfile(
       id: id ?? this.id,
@@ -150,6 +241,10 @@ class UserProfile {
       goalType: goalType ?? this.goalType,
       targetDate: targetDate ?? this.targetDate,
       goals: goals ?? this.goals,
+      refeedSettings: refeedSettings ?? this.refeedSettings,
+      tdeeHistory: tdeeHistory ?? this.tdeeHistory,
+      currentAdaptedTdee: currentAdaptedTdee ?? this.currentAdaptedTdee,
+      programStartDate: programStartDate ?? this.programStartDate,
     );
   }
 
@@ -166,6 +261,10 @@ class UserProfile {
       'goalType': goalType.name,
       'targetDate': targetDate.toIso8601String(),
       'goals': goals.toJson(),
+      'refeedSettings': refeedSettings.toJson(),
+      'tdeeHistory': tdeeHistory.map((e) => e.toJson()).toList(),
+      'currentAdaptedTdee': currentAdaptedTdee,
+      'programStartDate': programStartDate?.toIso8601String(),
     };
   }
 
@@ -191,6 +290,17 @@ class UserProfile {
       ),
       targetDate: DateTime.parse(json['targetDate'] as String),
       goals: UserGoals.fromJson(json['goals'] as Map<String, dynamic>),
+      refeedSettings: json['refeedSettings'] != null
+          ? RefeedSettings.fromJson(json['refeedSettings'] as Map<String, dynamic>)
+          : const RefeedSettings(),
+      tdeeHistory: (json['tdeeHistory'] as List<dynamic>?)
+              ?.map((e) => AdaptedTdeeHistoryEntry.fromJson(e as Map<String, dynamic>))
+              .toList() ??
+          const [],
+      currentAdaptedTdee: (json['currentAdaptedTdee'] as num?)?.toDouble(),
+      programStartDate: json['programStartDate'] != null
+          ? DateTime.parse(json['programStartDate'] as String)
+          : null,
     );
   }
 }

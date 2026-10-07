@@ -29,12 +29,44 @@ class RecipeIngredient {
   }
 }
 
+/// マイリストの分類カテゴリ
+enum MyListCategory {
+  ingredient, // 食材・単品（プロテイン、オートミール、卵など）
+  homeCooked, // 自炊レシピ（手料理、ボウル合算）
+  diningOut,  // 外食メニュー（定番外食、定食、ラーメンなど）
+}
+
+extension MyListCategoryExtension on MyListCategory {
+  String get label {
+    switch (this) {
+      case MyListCategory.ingredient:
+        return '食材・単品';
+      case MyListCategory.homeCooked:
+        return '自炊レシピ';
+      case MyListCategory.diningOut:
+        return '外食メニュー';
+    }
+  }
+
+  String get shortLabel {
+    switch (this) {
+      case MyListCategory.ingredient:
+        return '食材';
+      case MyListCategory.homeCooked:
+        return '自炊';
+      case MyListCategory.diningOut:
+        return '外食';
+    }
+  }
+}
+
 class Recipe {
   final String id;
   final String name;
   final String? description;
   final int servings; // 人前
   final List<RecipeIngredient> ingredients;
+  final MyListCategory category;
   final DateTime createdAt;
 
   const Recipe({
@@ -43,6 +75,7 @@ class Recipe {
     this.description,
     this.servings = 1,
     required this.ingredients,
+    this.category = MyListCategory.homeCooked,
     required this.createdAt,
   });
 
@@ -66,20 +99,38 @@ class Recipe {
       'name': name,
       'description': description,
       'servings': servings,
+      'category': category.name,
       'ingredients': ingredients.map((i) => i.toJson()).toList(),
       'createdAt': createdAt.toIso8601String(),
     };
   }
 
   factory Recipe.fromJson(Map<String, dynamic> json) {
+    final catName = json['category'] as String?;
+    final ingredientsList = (json['ingredients'] as List<dynamic>)
+        .map((i) => RecipeIngredient.fromJson(i as Map<String, dynamic>))
+        .toList();
+
+    MyListCategory cat;
+    if (catName != null) {
+      cat = MyListCategory.values.firstWhere(
+        (c) => c.name == catName,
+        orElse: () => MyListCategory.homeCooked,
+      );
+    } else {
+      // 後方互換性：食材が1件のみなら単品食材、それ以外は自炊と自動推論
+      cat = ingredientsList.length == 1
+          ? MyListCategory.ingredient
+          : MyListCategory.homeCooked;
+    }
+
     return Recipe(
       id: json['id'] as String,
       name: json['name'] as String,
       description: json['description'] as String?,
       servings: json['servings'] as int? ?? 1,
-      ingredients: (json['ingredients'] as List<dynamic>)
-          .map((i) => RecipeIngredient.fromJson(i as Map<String, dynamic>))
-          .toList(),
+      category: cat,
+      ingredients: ingredientsList,
       createdAt: DateTime.parse(json['createdAt'] as String),
     );
   }

@@ -67,3 +67,9 @@ See [DESIGN_SYSTEM.md](file:///c:/devlop/pfc-health-tracker/DESIGN_SYSTEM.md) fo
 2. `build/web` ディレクトリにて `npx vercel --prod --scope toeicapps --yes` を実行
 3. 本番URL（`https://pfc-tracker-tau.vercel.app/`）が正常に更新されたことを確認
 
+## 進捗管理・実装ロードマップ（Obsidian連携ルール）
+本プロジェクトの実装・修正作業を行う際は、必ず以下のObsidian保管庫内のロードマップ・TODOファイルを参照し、最新の進捗状態から作業を再開すること。
+- **参照・更新先ファイル**: `G:\マイドライブ\ObsidianVault\開発ログ\pfc-health-tracker\2026-10-07_pfc-adaptive-roadmap-todo.md`
+- **作業開始前**: 必ず上記ファイルを読み込み、現在完了しているステップと未完了のタスクを確認して続きから着手する。
+- **タスク完了時**: 各タスクが完了・検証されるごとに、該当のチェックボックスを `[ ]` から `[x]` に随時更新して最新状態を保つこと。
+

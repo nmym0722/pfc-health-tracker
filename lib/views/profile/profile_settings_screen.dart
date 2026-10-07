@@ -8,6 +8,7 @@ import '../../providers/weight_provider.dart';
 import '../../providers/food_master_provider.dart';
 import '../../services/storage_service.dart';
 import '../../core/utils/bmr_calculator.dart';
+import '../../core/utils/demo_data_generator.dart';
 
 class ProfileSettingsScreen extends ConsumerStatefulWidget {
   const ProfileSettingsScreen({super.key});
@@ -392,6 +393,17 @@ class _ProfileSettingsScreenState extends ConsumerState<ProfileSettingsScreen> {
             ),
             const SizedBox(height: 16),
 
+            // 検証用デモデータ（14日分）一括投入ボタン
+            FilledButton.tonalIcon(
+              onPressed: _loadDemoData,
+              icon: const Icon(Icons.science_outlined),
+              label: const Text('検証用デモデータ（14日分）を一括投入'),
+              style: FilledButton.styleFrom(
+                minimumSize: const Size.fromHeight(48),
+              ),
+            ),
+            const SizedBox(height: 16),
+
             // 全データ初期化（リセット）ボタン
             OutlinedButton.icon(
               onPressed: _confirmResetAllData,
@@ -408,6 +420,16 @@ class _ProfileSettingsScreenState extends ConsumerState<ProfileSettingsScreen> {
         ),
       ),
     );
+  }
+
+  Future<void> _loadDemoData() async {
+    await DemoDataGenerator.loadDemoData(ref);
+    if (mounted) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('検証用デモデータ（14日分）を投入しました！')),
+      );
+      Navigator.of(context).pop();
+    }
   }
 
   Future<void> _confirmResetAllData() async {
