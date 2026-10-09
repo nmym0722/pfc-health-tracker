@@ -48,6 +48,8 @@ void main() {
     // 6. 「登録する」ボタンをタップ
     final registerButton = find.text('登録する');
     expect(registerButton, findsOneWidget);
+    await tester.ensureVisible(registerButton);
+    await tester.pumpAndSettle();
     await tester.tap(registerButton);
     await tester.pumpAndSettle();
 
@@ -58,6 +60,9 @@ void main() {
     await tester.pumpAndSettle();
 
     // 8. リストに「高タンパクヨーグルト」と「カスタム」バッジが表示されること
+    await tester.drag(find.byType(ListView).last, const Offset(0, -300));
+    await tester.pumpAndSettle();
+
     expect(find.text('高タンパクヨーグルト'), findsOneWidget);
     expect(find.text('カスタム'), findsWidgets);
     expect(find.textContaining('95.0kcal'), findsOneWidget);

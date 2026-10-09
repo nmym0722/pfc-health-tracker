@@ -176,48 +176,57 @@ class _MyRecipesScreenState extends ConsumerState<MyRecipesScreen> {
                   child: Row(
                     mainAxisAlignment: MainAxisAlignment.spaceAround,
                     children: [
-                      Column(
-                        children: [
-                          Text('1人前カロリー', style: theme.textTheme.bodySmall),
-                          const SizedBox(height: 2),
-                          Text(
-                            '${recipe.caloriesPerServing.round()} kcal',
-                            style: theme.textTheme.titleMedium?.copyWith(
-                              fontWeight: FontWeight.bold,
-                              color: theme.colorScheme.primary,
+                      Expanded(
+                        child: Column(
+                          children: [
+                            Text('1人前カロリー', style: theme.textTheme.bodySmall?.copyWith(fontSize: 10)),
+                            const SizedBox(height: 2),
+                            Text(
+                              '${recipe.caloriesPerServing.round()} kcal',
+                              style: theme.textTheme.titleMedium?.copyWith(
+                                fontWeight: FontWeight.bold,
+                                fontSize: 13,
+                                color: theme.colorScheme.primary,
+                              ),
                             ),
-                          ),
-                        ],
+                          ],
+                        ),
                       ),
-                      Column(
-                        children: [
-                          Text('P: タンパク質', style: theme.textTheme.bodySmall),
-                          const SizedBox(height: 2),
-                          Text(
-                            '${recipe.proteinPerServing.toStringAsFixed(1)} g',
-                            style: TextStyle(fontWeight: FontWeight.bold, color: theme.colorScheme.primary),
-                          ),
-                        ],
+                      Expanded(
+                        child: Column(
+                          children: [
+                            Text('P: タンパク質', style: theme.textTheme.bodySmall?.copyWith(fontSize: 10)),
+                            const SizedBox(height: 2),
+                            Text(
+                              '${recipe.proteinPerServing.toStringAsFixed(1)} g',
+                              style: TextStyle(fontWeight: FontWeight.bold, fontSize: 13, color: theme.colorScheme.primary),
+                            ),
+                          ],
+                        ),
                       ),
-                      Column(
-                        children: [
-                          Text('F: 脂質', style: theme.textTheme.bodySmall),
-                          const SizedBox(height: 2),
-                          Text(
-                            '${recipe.fatPerServing.toStringAsFixed(1)} g',
-                            style: TextStyle(fontWeight: FontWeight.bold, color: theme.colorScheme.tertiary),
-                          ),
-                        ],
+                      Expanded(
+                        child: Column(
+                          children: [
+                            Text('F: 脂質', style: theme.textTheme.bodySmall?.copyWith(fontSize: 10)),
+                            const SizedBox(height: 2),
+                            Text(
+                              '${recipe.fatPerServing.toStringAsFixed(1)} g',
+                              style: TextStyle(fontWeight: FontWeight.bold, fontSize: 13, color: theme.colorScheme.tertiary),
+                            ),
+                          ],
+                        ),
                       ),
-                      Column(
-                        children: [
-                          Text('C: 炭水化物', style: theme.textTheme.bodySmall),
-                          const SizedBox(height: 2),
-                          Text(
-                            '${recipe.carbsPerServing.toStringAsFixed(1)} g',
-                            style: TextStyle(fontWeight: FontWeight.bold, color: theme.colorScheme.secondary),
-                          ),
-                        ],
+                      Expanded(
+                        child: Column(
+                          children: [
+                            Text('C: 炭水化物', style: theme.textTheme.bodySmall?.copyWith(fontSize: 10)),
+                            const SizedBox(height: 2),
+                            Text(
+                              '${recipe.carbsPerServing.toStringAsFixed(1)} g',
+                              style: TextStyle(fontWeight: FontWeight.bold, fontSize: 13, color: theme.colorScheme.secondary),
+                            ),
+                          ],
+                        ),
                       ),
                     ],
                   ),
@@ -411,6 +420,18 @@ class _MyRecipesScreenState extends ConsumerState<MyRecipesScreen> {
                 trailing: Row(
                   mainAxisSize: MainAxisSize.min,
                   children: [
+                    IconButton(
+                      icon: Icon(
+                        food.isFavorite ? Icons.star : Icons.star_border,
+                        color: food.isFavorite ? Colors.amber : theme.colorScheme.onSurfaceVariant,
+                        size: 20,
+                      ),
+                      tooltip: food.isFavorite ? 'お気に入り解除' : 'お気に入り登録',
+                      visualDensity: VisualDensity.compact,
+                      onPressed: () {
+                        ref.read(foodMasterProvider.notifier).toggleFavorite(food.id);
+                      },
+                    ),
                     if (food.category != null)
                       Padding(
                         padding: const EdgeInsets.only(right: 4.0),

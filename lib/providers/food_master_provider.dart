@@ -27,6 +27,16 @@ class FoodMasterNotifier extends StateNotifier<List<FoodMaster>> {
     StorageService.saveFoodMasters(state);
   }
 
+  void toggleFavorite(String foodId) {
+    state = state.map((f) {
+      if (f.id == foodId) {
+        return f.copyWith(isFavorite: !f.isFavorite);
+      }
+      return f;
+    }).toList();
+    StorageService.saveFoodMasters(state);
+  }
+
   // 互換性維持
   void addCustomFood(FoodMaster food) => addFood(food);
 }

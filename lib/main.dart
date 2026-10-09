@@ -100,6 +100,32 @@ class _PfcTrackerAppState extends State<PfcTrackerApp> {
       debugShowCheckedModeBanner: false,
       scrollBehavior: const AppScrollBehavior(),
       theme: AppTheme.lightTheme,
+      builder: (context, child) {
+        return Container(
+          color: const Color(0xFF1E2022), // PC/大画面ブラウザ時の背景
+          child: Center(
+            child: ConstrainedBox(
+              constraints: const BoxConstraints(
+                maxWidth: 440, // iPhone 表示領域（Pro Max相当）
+              ),
+              child: Container(
+                decoration: BoxDecoration(
+                  color: Theme.of(context).scaffoldBackgroundColor,
+                  boxShadow: [
+                    BoxShadow(
+                      color: Colors.black.withOpacity(0.25),
+                      blurRadius: 24,
+                      spreadRadius: 2,
+                    ),
+                  ],
+                ),
+                clipBehavior: Clip.hardEdge,
+                child: child ?? const SizedBox.shrink(),
+              ),
+            ),
+          ),
+        );
+      },
       home: const MainNavigationScreen(),
     );
   }

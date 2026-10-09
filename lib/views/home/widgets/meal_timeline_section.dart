@@ -341,7 +341,7 @@ class _RecipeGroupTileState extends State<_RecipeGroupTile> {
                       children: [
                         Row(
                           children: [
-                            Flexible(
+                            Expanded(
                               child: Text(
                                 widget.recipeName,
                                 style: theme.textTheme.bodyMedium?.copyWith(

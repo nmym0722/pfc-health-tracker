@@ -12,6 +12,7 @@ class FoodMaster {
   final double carbs;      // 基準量あたりの炭水化物 (g)
   final String? category;  // 肉類, 野菜類, 穀物等
   final bool isCustom;     // ユーザー追加フラグ
+  final bool isFavorite;   // お気に入りフラグ
 
   const FoodMaster({
     required this.id,
@@ -25,6 +26,7 @@ class FoodMaster {
     required this.carbs,
     this.category,
     this.isCustom = false,
+    this.isFavorite = false,
   });
 
   String get unitLabel {
@@ -67,6 +69,7 @@ class FoodMaster {
     double? carbs,
     String? category,
     bool? isCustom,
+    bool? isFavorite,
   }) {
     return FoodMaster(
       id: id ?? this.id,
@@ -80,6 +83,7 @@ class FoodMaster {
       carbs: carbs ?? this.carbs,
       category: category ?? this.category,
       isCustom: isCustom ?? this.isCustom,
+      isFavorite: isFavorite ?? this.isFavorite,
     );
   }
 
@@ -96,6 +100,7 @@ class FoodMaster {
       'carbs': carbs,
       'category': category,
       'isCustom': isCustom,
+      'isFavorite': isFavorite,
     };
   }
 
@@ -115,6 +120,7 @@ class FoodMaster {
       carbs: (json['carbs'] as num).toDouble(),
       category: json['category'] as String?,
       isCustom: json['isCustom'] as bool? ?? false,
+      isFavorite: json['isFavorite'] as bool? ?? false,
     );
   }
 }

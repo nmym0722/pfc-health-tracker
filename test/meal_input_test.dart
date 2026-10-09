@@ -117,7 +117,12 @@ void main() {
     expect(find.byType(FloatingActionButton), findsOneWidget);
     expect(find.text('ボウル (0品)'), findsOneWidget);
 
-    // 5. 1つ目の食材（鶏むね肉 皮なし）を選択してボウルに追加
+    // 5. 「肉類」カテゴリのトグルを開く
+    expect(find.text('肉類'), findsOneWidget);
+    await tester.tap(find.text('肉類'));
+    await tester.pumpAndSettle();
+
+    // 1つ目の食材（鶏むね肉 皮なし）を選択してボウルに追加
     await tester.tap(find.text('鶏むね肉（皮なし）').first);
     await tester.pumpAndSettle();
     expect(find.text('ボウルに追加'), findsOneWidget);
@@ -180,6 +185,8 @@ void main() {
     // 2. 初期シードされているマイレシピ「蒸し鶏とブロッコリーの筋肉ボウル」の「食事に追加」をタップ
     final addRecipeButton = find.text('食事に追加').first;
     expect(addRecipeButton, findsOneWidget);
+    await tester.ensureVisible(addRecipeButton);
+    await tester.pumpAndSettle();
     await tester.tap(addRecipeButton);
     await tester.pumpAndSettle();
 

@@ -42,8 +42,6 @@ class _MealInputScreenState extends ConsumerState<MealInputScreen>
   // 2. 食材合算（調理ボウル）用ステート
   final List<RecipeIngredient> _bowlIngredients = [];
   String _searchQuery = '';
-  String _selectedCategory = 'すべて';
-  bool _isCategoryExpanded = false;
   FoodMaster? _selectedFoodForBowl;
   final _bowlAmountController = TextEditingController(text: '100');
 
@@ -51,8 +49,7 @@ class _MealInputScreenState extends ConsumerState<MealInputScreen>
   MyListCategory? _selectedMyListCategory; // null = すべて
   final Map<String, double> _recipeScaleMap = {};
 
-  static const _categories = [
-    'すべて',
+  static const _foodCategories = [
     '肉類',
     '加工肉',
     '魚介類',
@@ -141,15 +138,6 @@ class _MealInputScreenState extends ConsumerState<MealInputScreen>
     final foodMasters = ref.watch(foodMasterProvider);
     final recipes = ref.watch(recipeProvider);
 
-    final filteredFoods = foodMasters.where((food) {
-      final matchesSearch = _searchQuery.isEmpty ||
-          food.name.contains(_searchQuery) ||
-          (food.category?.contains(_searchQuery) ?? false);
-      final matchesCategory = _selectedCategory == 'すべて' ||
-          food.category == _selectedCategory;
-      return matchesSearch && matchesCategory;
-    }).toList();
-
     return Scaffold(
       appBar: AppBar(
         automaticallyImplyLeading: widget.isModal,
@@ -181,7 +169,7 @@ class _MealInputScreenState extends ConsumerState<MealInputScreen>
           ),
 
           // 4. 食材マスタ合算（自炊モード）タブ
-          _buildCompositeCookingTab(theme, filteredFoods),
+          _buildCompositeCookingTab(theme, foodMasters),
         ],
       ),
       floatingActionButton: (_tabController.index == 3 && _selectedFoodForBowl == null)
@@ -332,8 +320,118 @@ class _MealInputScreenState extends ConsumerState<MealInputScreen>
     );
   }
 
+  IconData _getFoodCategoryIcon(String category) {
+    switch (category) {
+      case '肉類':
+        return Icons.kebab_dining_outlined;
+      case '加工肉':
+        return Icons.lunch_dining_outlined;
+      case '魚介類':
+        return Icons.set_meal_outlined;
+      case '卵・大豆類':
+        return Icons.egg_outlined;
+      case '主食・穀物':
+        return Icons.rice_bowl_outlined;
+      case '野菜類':
+        return Icons.eco_outlined;
+      case 'きのこ・海藻':
+        return Icons.grass_outlined;
+      case '果物':
+        return Icons.apple_outlined;
+      case '乳製品・サプリ':
+        return Icons.local_drink_outlined;
+      case '油脂・調味料':
+        return Icons.water_drop_outlined;
+      default:
+        return Icons.category_outlined;
+    }
+  }
+
+  /// 食材リストタイル（星マークでお気に入りトグル可能、PFC調整は食材ライブラリに集約）
+  Widget _buildFoodTile(ThemeData theme, FoodMaster food) {
+    final isSelected = _selectedFoodForBowl?.id == food.id;
+
+    return ListTile(
+      dense: true,
+      selected: isSelected,
+      selectedTileColor: theme.colorScheme.primaryContainer.withOpacity(0.3),
+      title: Row(
+        children: [
+          Expanded(
+            child: Text(
+              food.name,
+              style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 14),
+            ),
+          ),
+          if (food.isCustom)
+            Container(
+              padding: const EdgeInsets.symmetric(horizontal: 5, vertical: 1),
+              decoration: BoxDecoration(
+                color: theme.colorScheme.secondaryContainer,
+                borderRadius: BorderRadius.circular(4),
+              ),
+              child: Text(
+                'カスタム',
+                style: TextStyle(
+                  fontSize: 10,
+                  fontWeight: FontWeight.bold,
+                  color: theme.colorScheme.onSecondaryContainer,
+                ),
+              ),
+            ),
+        ],
+      ),
+      subtitle: Text(
+        '${food.baseAmountLabel}あたり: ${food.calories.round()}kcal (P:${food.protein}g F:${food.fat}g C:${food.carbs}g)',
+        style: const TextStyle(fontSize: 12),
+      ),
+      trailing: Row(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          IconButton(
+            icon: Icon(
+              food.isFavorite ? Icons.star : Icons.star_border,
+              size: 22,
+              color: food.isFavorite ? Colors.amber : theme.colorScheme.onSurfaceVariant,
+            ),
+            tooltip: food.isFavorite ? 'お気に入り解除' : 'お気に入りに登録',
+            visualDensity: VisualDensity.compact,
+            onPressed: () {
+              ref.read(foodMasterProvider.notifier).toggleFavorite(food.id);
+            },
+          ),
+          Icon(
+            isSelected ? Icons.check_circle : Icons.add_circle_outline,
+            size: 22,
+            color: isSelected ? theme.colorScheme.primary : theme.colorScheme.outline,
+          ),
+        ],
+      ),
+      onTap: () {
+        ScaffoldMessenger.of(context).clearSnackBars();
+        setState(() {
+          _selectedFoodForBowl = food;
+          _bowlAmountController.text = AmountParser.formatAmount(food.baseAmount);
+        });
+      },
+    );
+  }
+
   // 2. 自炊・食材合算計算タブ
-  Widget _buildCompositeCookingTab(ThemeData theme, List<FoodMaster> foods) {
+  Widget _buildCompositeCookingTab(ThemeData theme, List<FoodMaster> allFoods) {
+    final searchTrimmed = _searchQuery.trim().toLowerCase();
+    final isSearching = searchTrimmed.isNotEmpty;
+
+    final searchMatchedFoods = isSearching
+        ? allFoods.where((f) {
+            final nameMatch = f.name.toLowerCase().contains(searchTrimmed);
+            final catMatch = f.category?.toLowerCase().contains(searchTrimmed) ?? false;
+            return nameMatch || catMatch;
+          }).toList()
+        : <FoodMaster>[];
+
+    final favoriteFoods = allFoods.where((f) => f.isFavorite).toList();
+
     return Column(
       children: [
         // 最上部タブのすぐ下に配置される食材検索バー & 新規食材追加ボタン
@@ -366,137 +464,172 @@ class _MealInputScreenState extends ConsumerState<MealInputScreen>
           ),
         ),
 
-        // カテゴリ別クイックフィルターチップ (スワイプ & 展開トグル対応)
-        Padding(
-          padding: const EdgeInsets.symmetric(horizontal: 16.0, vertical: 2.0),
-          child: Row(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              Expanded(
-                child: _isCategoryExpanded
-                    ? Padding(
-                        padding: const EdgeInsets.symmetric(vertical: 4.0),
-                        child: Wrap(
-                          spacing: 6,
-                          runSpacing: 6,
-                          children: _categories.map((cat) {
-                            final isSelected = _selectedCategory == cat;
-                            return FilterChip(
-                              label: Text(cat, style: const TextStyle(fontSize: 12)),
-                              selected: isSelected,
-                              showCheckmark: false,
-                              onSelected: (_) {
-                                setState(() {
-                                  _selectedCategory = cat;
-                                });
-                              },
-                              visualDensity: VisualDensity.compact,
-                            );
-                          }).toList(),
-                        ),
-                      )
-                    : SizedBox(
-                        height: 40,
-                        child: ListView.separated(
-                          scrollDirection: Axis.horizontal,
-                          itemCount: _categories.length,
-                          separatorBuilder: (_, __) => const SizedBox(width: 8),
-                          itemBuilder: (context, index) {
-                            final cat = _categories[index];
-                            final isSelected = _selectedCategory == cat;
-                            return FilterChip(
-                              label: Text(cat, style: const TextStyle(fontSize: 12)),
-                              selected: isSelected,
-                              showCheckmark: false,
-                              onSelected: (_) {
-                                setState(() {
-                                  _selectedCategory = cat;
-                                });
-                              },
-                              visualDensity: VisualDensity.compact,
-                            );
-                          },
-                        ),
-                      ),
-              ),
-              IconButton(
-                icon: Icon(
-                  _isCategoryExpanded ? Icons.keyboard_arrow_up : Icons.keyboard_arrow_down,
-                  size: 22,
-                ),
-                tooltip: _isCategoryExpanded ? '1行に折りたたむ' : 'すべてのカテゴリを展開',
-                visualDensity: VisualDensity.compact,
-                onPressed: () {
-                  setState(() {
-                    _isCategoryExpanded = !_isCategoryExpanded;
-                  });
-                },
-              ),
-            ],
-          ),
-        ),
-
-        // 食材選択リスト
+        // 食材欄：カテゴリ別のトグル開閉リスト（アコーディオン）または検索結果
         Expanded(
-          child: ListView.builder(
-            itemCount: foods.length,
-            itemBuilder: (context, index) {
-              final food = foods[index];
-              final isSelected = _selectedFoodForBowl?.id == food.id;
-
-              return ListTile(
-                selected: isSelected,
-                selectedTileColor: theme.colorScheme.primaryContainer.withOpacity(0.3),
-                title: Row(
+          child: isSearching
+              ? (searchMatchedFoods.isEmpty
+                  ? Center(
+                      child: Text(
+                        '「$_searchQuery」に一致する食材がありません',
+                        style: TextStyle(color: theme.colorScheme.onSurfaceVariant),
+                      ),
+                    )
+                  : ListView.builder(
+                      itemCount: searchMatchedFoods.length,
+                      itemBuilder: (context, index) {
+                        return _buildFoodTile(theme, searchMatchedFoods[index]);
+                      },
+                    ))
+              : ListView(
                   children: [
-                    Expanded(
-                      child: Text(food.name, style: const TextStyle(fontWeight: FontWeight.bold)),
-                    ),
-                    if (food.isCustom)
-                      Container(
-                        padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
-                        decoration: BoxDecoration(
-                          color: theme.colorScheme.secondaryContainer,
-                          borderRadius: BorderRadius.circular(4),
-                        ),
-                        child: Text(
-                          'カスタム',
-                          style: TextStyle(
-                            fontSize: 10,
-                            fontWeight: FontWeight.bold,
-                            color: theme.colorScheme.onSecondaryContainer,
+                    // 1. お気に入り食材トグル（最上部に配置）
+                    if (favoriteFoods.isNotEmpty) ...[
+                      Card(
+                        margin: const EdgeInsets.symmetric(horizontal: 12.0, vertical: 4.0),
+                        elevation: 0,
+                        color: theme.colorScheme.surfaceContainerLow,
+                        shape: RoundedRectangleBorder(
+                          borderRadius: BorderRadius.circular(12),
+                          side: BorderSide(
+                            color: Colors.amber.withOpacity(0.4),
+                            width: 1,
                           ),
                         ),
+                        child: ExpansionTile(
+                          initiallyExpanded: true,
+                          leading: const Icon(Icons.star, color: Colors.amber),
+                          title: Text(
+                            'お気に入り食材',
+                            style: TextStyle(
+                              fontWeight: FontWeight.bold,
+                              color: theme.colorScheme.onSurface,
+                            ),
+                          ),
+                          trailing: Container(
+                            padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
+                            decoration: BoxDecoration(
+                              color: Colors.amber.withOpacity(0.18),
+                              borderRadius: BorderRadius.circular(12),
+                            ),
+                            child: Text(
+                              '${favoriteFoods.length}品',
+                              style: const TextStyle(
+                                fontSize: 12,
+                                fontWeight: FontWeight.bold,
+                                color: Colors.amber,
+                              ),
+                            ),
+                          ),
+                          children: favoriteFoods
+                              .map((food) => _buildFoodTile(theme, food))
+                              .toList(),
+                        ),
                       ),
+                      const SizedBox(height: 4),
+                    ],
+
+                    // 2. 各カテゴリのトグル（アコーディオン）
+                    ..._foodCategories.map((category) {
+                      final categoryFoods =
+                          allFoods.where((f) => f.category == category).toList();
+                      if (categoryFoods.isEmpty) return const SizedBox.shrink();
+
+                      return Card(
+                        margin: const EdgeInsets.symmetric(horizontal: 12.0, vertical: 3.0),
+                        elevation: 0,
+                        color: theme.colorScheme.surfaceContainerLow,
+                        shape: RoundedRectangleBorder(
+                          borderRadius: BorderRadius.circular(12),
+                          side: BorderSide(
+                            color: theme.colorScheme.outlineVariant.withOpacity(0.4),
+                            width: 1,
+                          ),
+                        ),
+                        child: ExpansionTile(
+                          leading: Icon(
+                            _getFoodCategoryIcon(category),
+                            color: theme.colorScheme.primary,
+                          ),
+                          title: Text(
+                            category,
+                            style: TextStyle(
+                              fontWeight: FontWeight.bold,
+                              color: theme.colorScheme.onSurface,
+                            ),
+                          ),
+                          trailing: Container(
+                            padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
+                            decoration: BoxDecoration(
+                              color: theme.colorScheme.surfaceContainerHighest,
+                              borderRadius: BorderRadius.circular(12),
+                            ),
+                            child: Text(
+                              '${categoryFoods.length}品',
+                              style: TextStyle(
+                                fontSize: 12,
+                                color: theme.colorScheme.onSurfaceVariant,
+                              ),
+                            ),
+                          ),
+                          children: categoryFoods
+                              .map((food) => _buildFoodTile(theme, food))
+                              .toList(),
+                        ),
+                      );
+                    }),
+
+                    // 3. その他 / カスタム食材
+                    Builder(builder: (context) {
+                      final otherFoods = allFoods
+                          .where((f) =>
+                              f.category == null ||
+                              !_foodCategories.contains(f.category))
+                          .toList();
+                      if (otherFoods.isEmpty) return const SizedBox.shrink();
+
+                      return Card(
+                        margin: const EdgeInsets.symmetric(horizontal: 12.0, vertical: 3.0),
+                        elevation: 0,
+                        color: theme.colorScheme.surfaceContainerLow,
+                        shape: RoundedRectangleBorder(
+                          borderRadius: BorderRadius.circular(12),
+                          side: BorderSide(
+                            color: theme.colorScheme.outlineVariant.withOpacity(0.4),
+                            width: 1,
+                          ),
+                        ),
+                        child: ExpansionTile(
+                          leading: Icon(
+                            Icons.more_horiz,
+                            color: theme.colorScheme.primary,
+                          ),
+                          title: const Text(
+                            'その他 / カスタム',
+                            style: TextStyle(fontWeight: FontWeight.bold),
+                          ),
+                          trailing: Container(
+                            padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
+                            decoration: BoxDecoration(
+                              color: theme.colorScheme.surfaceContainerHighest,
+                              borderRadius: BorderRadius.circular(12),
+                            ),
+                            child: Text(
+                              '${otherFoods.length}品',
+                              style: TextStyle(
+                                fontSize: 12,
+                                color: theme.colorScheme.onSurfaceVariant,
+                              ),
+                            ),
+                          ),
+                          children: otherFoods
+                              .map((food) => _buildFoodTile(theme, food))
+                              .toList(),
+                        ),
+                      );
+                    }),
+                    const SizedBox(height: 80),
                   ],
                 ),
-                subtitle: Text(
-                  '${food.baseAmountLabel}あたり: ${food.calories}kcal (P:${food.protein}g F:${food.fat}g C:${food.carbs}g)',
-                ),
-                trailing: Row(
-                  mainAxisSize: MainAxisSize.min,
-                  children: [
-                    IconButton(
-                      icon: const Icon(Icons.tune, size: 20),
-                      tooltip: 'カロリー・PFCを調整',
-                      onPressed: () => _openEditFoodDialog(food),
-                    ),
-                    Icon(
-                      isSelected ? Icons.check_circle : Icons.add_circle_outline,
-                      color: isSelected ? theme.colorScheme.primary : null,
-                    ),
-                  ],
-                ),
-                onTap: () {
-                  ScaffoldMessenger.of(context).clearSnackBars();
-                  setState(() {
-                    _selectedFoodForBowl = food;
-                    _bowlAmountController.text = AmountParser.formatAmount(food.baseAmount);
-                  });
-                },
-              );
-            },
-          ),
         ),
 
         // 選択中食材の分量入力トレイ
@@ -747,23 +880,30 @@ class _MealInputScreenState extends ConsumerState<MealInputScreen>
                                   Row(
                                     mainAxisAlignment: MainAxisAlignment.spaceBetween,
                                     children: [
-                                      Row(
-                                        children: [
-                                          Icon(Icons.tune, size: 16, color: theme.colorScheme.primary),
-                                          const SizedBox(width: 6),
-                                          Text(
-                                            isSingle
-                                                ? '分量: ${(singleIng!.amount * scale).round()}${singleIng.food.unitLabel} (${scale.toStringAsFixed(1)}倍)'
-                                                : '分量割合: ${scale.toStringAsFixed(1)}人前 (${(scale * 100).round()}%)',
-                                            style: TextStyle(
-                                              fontWeight: FontWeight.bold,
-                                              fontSize: 12,
-                                              color: theme.colorScheme.primary,
+                                      Expanded(
+                                        child: Row(
+                                          children: [
+                                            Icon(Icons.tune, size: 16, color: theme.colorScheme.primary),
+                                            const SizedBox(width: 6),
+                                            Expanded(
+                                              child: Text(
+                                                isSingle
+                                                    ? '分量: ${(singleIng!.amount * scale).round()}${singleIng.food.unitLabel} (${scale.toStringAsFixed(1)}倍)'
+                                                    : '分量割合: ${scale.toStringAsFixed(1)}人前 (${(scale * 100).round()}%)',
+                                                style: TextStyle(
+                                                  fontWeight: FontWeight.bold,
+                                                  fontSize: 12,
+                                                  color: theme.colorScheme.primary,
+                                                ),
+                                                overflow: TextOverflow.ellipsis,
+                                              ),
                                             ),
-                                          ),
-                                        ],
+                                          ],
+                                        ),
                                       ),
+                                      const SizedBox(width: 8),
                                       Row(
+                                        mainAxisSize: MainAxisSize.min,
                                         children: [
                                           IconButton(
                                             icon: const Icon(Icons.remove_circle_outline, size: 20),
@@ -774,12 +914,12 @@ class _MealInputScreenState extends ConsumerState<MealInputScreen>
                                                 ? () => setState(() => _recipeScaleMap[recipe.id] = ((scale - 0.1) * 10).round() / 10)
                                                 : null,
                                           ),
-                                          const SizedBox(width: 8),
+                                          const SizedBox(width: 6),
                                           Text(
                                             '${scale.toStringAsFixed(1)}x',
                                             style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 13),
                                           ),
-                                          const SizedBox(width: 8),
+                                          const SizedBox(width: 6),
                                           IconButton(
                                             icon: const Icon(Icons.add_circle_outline, size: 20),
                                             visualDensity: VisualDensity.compact,
@@ -818,35 +958,54 @@ class _MealInputScreenState extends ConsumerState<MealInputScreen>
                             ),
                             const SizedBox(height: 12),
 
-                            // 調整後栄養価（PFC・カロリー）
-                            Row(
-                              mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                            // 調整後栄養価（PFC・カロリー） & 食事に追加ボタン
+                            Wrap(
+                              alignment: WrapAlignment.spaceBetween,
+                              crossAxisAlignment: WrapCrossAlignment.center,
+                              spacing: 8,
+                              runSpacing: 8,
                               children: [
-                                Row(
+                                Column(
+                                  crossAxisAlignment: CrossAxisAlignment.start,
+                                  mainAxisSize: MainAxisSize.min,
                                   children: [
-                                    Icon(Icons.local_fire_department, size: 18, color: theme.colorScheme.primary),
-                                    const SizedBox(width: 4),
-                                    Text(
-                                      '$cal kcal',
-                                      style: TextStyle(
-                                        fontSize: 16,
-                                        fontWeight: FontWeight.bold,
-                                        color: theme.colorScheme.primary,
-                                      ),
+                                    Row(
+                                      mainAxisSize: MainAxisSize.min,
+                                      children: [
+                                        Icon(Icons.local_fire_department, size: 18, color: theme.colorScheme.primary),
+                                        const SizedBox(width: 4),
+                                        Text(
+                                          '$cal kcal',
+                                          style: TextStyle(
+                                            fontSize: 16,
+                                            fontWeight: FontWeight.bold,
+                                            color: theme.colorScheme.primary,
+                                          ),
+                                        ),
+                                      ],
                                     ),
-                                    const SizedBox(width: 12),
-                                    Text('P: ${p}g  ',
-                                        style: const TextStyle(color: Color(0xFF2E7D32), fontWeight: FontWeight.bold, fontSize: 12)),
-                                    Text('F: ${f}g  ',
-                                        style: const TextStyle(color: Color(0xFFC62828), fontWeight: FontWeight.bold, fontSize: 12)),
-                                    Text('C: ${c}g',
-                                        style: const TextStyle(color: Color(0xFF1565C0), fontWeight: FontWeight.bold, fontSize: 12)),
+                                    const SizedBox(height: 2),
+                                    Row(
+                                      mainAxisSize: MainAxisSize.min,
+                                      children: [
+                                        Text('P:${p}g ',
+                                            style: const TextStyle(color: Color(0xFF2E7D32), fontWeight: FontWeight.bold, fontSize: 11)),
+                                        Text('F:${f}g ',
+                                            style: const TextStyle(color: Color(0xFFC62828), fontWeight: FontWeight.bold, fontSize: 11)),
+                                        Text('C:${c}g',
+                                            style: const TextStyle(color: Color(0xFF1565C0), fontWeight: FontWeight.bold, fontSize: 11)),
+                                      ],
+                                    ),
                                   ],
                                 ),
                                 FilledButton.tonalIcon(
                                   onPressed: () => _submitRecipeToMeal(recipe, scale: scale),
                                   icon: const Icon(Icons.add, size: 18),
                                   label: const Text('食事に追加'),
+                                  style: FilledButton.styleFrom(
+                                    visualDensity: VisualDensity.compact,
+                                    padding: const EdgeInsets.symmetric(horizontal: 12),
+                                  ),
                                 ),
                               ],
                             ),
@@ -1704,21 +1863,6 @@ class _MealInputScreenState extends ConsumerState<MealInputScreen>
       });
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(content: Text('「${newFood.name}」をライブラリに追加しました')),
-      );
-    }
-  }
-
-  // 既存食材の調整ダイアログを開く
-  Future<void> _openEditFoodDialog(FoodMaster food) async {
-    final updated = await FoodEditDialog.show(context, food: food);
-    if (updated != null && mounted) {
-      if (_selectedFoodForBowl?.id == updated.id) {
-        setState(() {
-          _selectedFoodForBowl = updated;
-        });
-      }
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text('「${updated.name}」の栄養価を更新しました')),
       );
     }
   }

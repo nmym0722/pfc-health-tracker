@@ -267,13 +267,17 @@ class _CalorieBalanceCardState extends ConsumerState<CalorieBalanceCard> {
                 Row(
                   mainAxisAlignment: MainAxisAlignment.spaceBetween,
                   children: [
-                    Text(
-                      '${_selectedDays == 7 ? '週間' : '月間'}予測摂取 (確定${report.recordedDays}日ベース)',
-                      style: theme.textTheme.bodySmall,
+                    Expanded(
+                      child: Text(
+                        '${_selectedDays == 7 ? '週間' : '月間'}予測摂取 (確定${report.recordedDays}日ベース)',
+                        style: theme.textTheme.bodySmall?.copyWith(fontSize: 11),
+                        overflow: TextOverflow.ellipsis,
+                      ),
                     ),
+                    const SizedBox(width: 8),
                     Text(
                       '${report.projectedTotalCalories.round()} / ${report.targetCaloriesTotal.round()} kcal',
-                      style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 12),
+                      style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 11),
                     ),
                   ],
                 ),
@@ -303,31 +307,37 @@ class _CalorieBalanceCardState extends ConsumerState<CalorieBalanceCard> {
               child: Row(
                 mainAxisAlignment: MainAxisAlignment.spaceAround,
                 children: [
-                  _buildMetricColumn(
-                    theme,
-                    title: '1日平均摂取',
-                    value: '${report.averageDailyCalories.round()} kcal',
-                    subtitle: '確定${report.recordedDays}日 / 目標${(report.targetCaloriesTotal / report.days).round()}',
+                  Expanded(
+                    child: _buildMetricColumn(
+                      theme,
+                      title: '1日平均摂取',
+                      value: '${report.averageDailyCalories.round()} kcal',
+                      subtitle: '確定${report.recordedDays}日 / 目標${(report.targetCaloriesTotal / report.days).round()}',
+                    ),
                   ),
                   Container(width: 1, height: 36, color: theme.colorScheme.outlineVariant),
-                  _buildMetricColumn(
-                    theme,
-                    title: '${_selectedDays == 7 ? '今週' : '月末'}予測純収支',
-                    value: '${report.netBalance > 0 ? '+' : ''}${report.netBalance.round()} kcal',
-                    subtitle: '対消費: ${report.tdeeTotal.round()}',
-                    valueColor: report.netBalance <= 0
-                        ? theme.colorScheme.primary
-                        : theme.colorScheme.error,
+                  Expanded(
+                    child: _buildMetricColumn(
+                      theme,
+                      title: '${_selectedDays == 7 ? '今週' : '月末'}予測純収支',
+                      value: '${report.netBalance > 0 ? '+' : ''}${report.netBalance.round()} kcal',
+                      subtitle: '対消費: ${report.tdeeTotal.round()}',
+                      valueColor: report.netBalance <= 0
+                          ? theme.colorScheme.primary
+                          : theme.colorScheme.error,
+                    ),
                   ),
                   Container(width: 1, height: 36, color: theme.colorScheme.outlineVariant),
-                  _buildMetricColumn(
-                    theme,
-                    title: '${_selectedDays == 7 ? '今週' : '月末'}体脂肪予測',
-                    value: '${report.fatChangeKg > 0 ? '+' : ''}${report.fatChangeKg.toStringAsFixed(2)} kg',
-                    subtitle: '7,200kcal/kg',
-                    valueColor: report.fatChangeKg <= 0
-                        ? theme.colorScheme.primary
-                        : theme.colorScheme.error,
+                  Expanded(
+                    child: _buildMetricColumn(
+                      theme,
+                      title: '${_selectedDays == 7 ? '今週' : '月末'}体脂肪予測',
+                      value: '${report.fatChangeKg > 0 ? '+' : ''}${report.fatChangeKg.toStringAsFixed(2)} kg',
+                      subtitle: '7,200kcal/kg',
+                      valueColor: report.fatChangeKg <= 0
+                          ? theme.colorScheme.primary
+                          : theme.colorScheme.error,
+                    ),
                   ),
                 ],
               ),
@@ -395,8 +405,11 @@ class _CalorieBalanceCardState extends ConsumerState<CalorieBalanceCard> {
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                Row(
-                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                Wrap(
+                  alignment: WrapAlignment.spaceBetween,
+                  crossAxisAlignment: WrapCrossAlignment.center,
+                  spacing: 4,
+                  runSpacing: 2,
                   children: [
                     Text(
                       '直近7日ローリング平均: ${rollingAverage.round()} kcal/日',

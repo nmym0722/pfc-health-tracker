@@ -118,10 +118,16 @@ class _PfcRow extends StatelessWidget {
                 color: theme.colorScheme.onSurface,
               ),
             ),
-            Text(
-              '${current.toStringAsFixed(1)} / ${target.toStringAsFixed(1)} $unit (残り ${remaining > 0 ? remaining.toStringAsFixed(1) : '0'} $unit)',
-              style: theme.textTheme.bodySmall?.copyWith(
-                color: theme.colorScheme.onSurfaceVariant,
+            const SizedBox(width: 8),
+            Flexible(
+              child: Text(
+                '${current.toStringAsFixed(1)} / ${target.toStringAsFixed(1)}$unit (残 ${remaining > 0 ? remaining.toStringAsFixed(1) : '0'}$unit)',
+                style: theme.textTheme.bodySmall?.copyWith(
+                  color: theme.colorScheme.onSurfaceVariant,
+                  fontSize: 11,
+                ),
+                overflow: TextOverflow.ellipsis,
+                textAlign: TextAlign.right,
               ),
             ),
           ],

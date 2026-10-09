@@ -4,7 +4,7 @@ import 'package:pfc_health_tracker/models/recipe.dart';
 
 void main() {
   group('MyListCategory and Recipe Scale Tests', () {
-    final egg = const FoodMaster(
+    const egg = FoodMaster(
       id: 'food-egg',
       name: '鶏卵（全卵）',
       baseAmount: 1.0,
@@ -22,7 +22,7 @@ void main() {
         servings: 1,
         category: MyListCategory.ingredient,
         ingredients: [
-          RecipeIngredient(food: egg, amount: 2.0),
+          const RecipeIngredient(food: egg, amount: 2.0),
         ],
         createdAt: DateTime.now(),
       );
@@ -41,7 +41,7 @@ void main() {
         'name': 'プロテイン',
         'servings': 1,
         'ingredients': [
-          RecipeIngredient(food: egg, amount: 1.0).toJson(),
+          const RecipeIngredient(food: egg, amount: 1.0).toJson(),
         ],
         'createdAt': DateTime.now().toIso8601String(),
       };
@@ -58,7 +58,7 @@ void main() {
         servings: 1,
         category: MyListCategory.ingredient,
         ingredients: [
-          RecipeIngredient(food: egg, amount: 1.0),
+          const RecipeIngredient(food: egg, amount: 1.0),
         ],
         createdAt: DateTime.now(),
       );
