@@ -101,10 +101,10 @@
         }, 260);
       }
     };
-    // 万が一通信遅延やスクリプト停止が発生しても最大1.5秒で自動解除するフェイルセーフ
+    // 万が一スクリプト停止などが発生しても最大15秒で自動解除するフェイルセーフ
     setTimeout(function() {
       window.removeAppSplash();
-    }, 1500);
+    }, 15000);
   </script>
   <script src="flutter_bootstrap.js" async></script>
 </body>

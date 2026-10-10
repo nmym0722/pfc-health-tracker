@@ -54,28 +54,70 @@ class PfcSummaryCard extends StatelessWidget {
             const SizedBox(height: 16),
 
             // 2. PFC進捗バー一覧
-            _PfcRow(
-              label: 'P (タンパク質)',
-              current: currentProtein,
-              target: targetProtein,
-              color: theme.colorScheme.primary,
-              unit: 'g',
-            ),
-            const SizedBox(height: 12),
-            _PfcRow(
-              label: 'F (脂質)',
-              current: currentFat,
-              target: targetFat,
-              color: theme.colorScheme.secondary,
-              unit: 'g',
-            ),
-            const SizedBox(height: 12),
-            _PfcRow(
-              label: 'C (炭水化物)',
-              current: currentCarbs,
-              target: targetCarbs,
-              color: theme.colorScheme.tertiary,
-              unit: 'g',
+            Builder(
+              builder: (context) {
+                // 各マクロ栄養素の摂取カロリー計算 (P: 4kcal/g, F: 9kcal/g, C: 4kcal/g)
+                final pCal = currentProtein * 4.0;
+                final fCal = currentFat * 9.0;
+                final cCal = currentCarbs * 4.0;
+
+                // 全摂取カロリーに対するパーセンテージ
+                final pPct = currentCalories > 0 ? (pCal / currentCalories * 100) : 0.0;
+                final fPct = currentCalories > 0 ? (fCal / currentCalories * 100) : 0.0;
+                final cPct = currentCalories > 0 ? (cCal / currentCalories * 100) : 0.0;
+
+                return Column(
+                  children: [
+                    // マクロ栄養素バランス サマリー
+                    Row(
+                      mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                      children: [
+                        Text(
+                          'マクロ栄養素バランス',
+                          style: theme.textTheme.labelMedium?.copyWith(
+                            fontWeight: FontWeight.w600,
+                            color: theme.colorScheme.onSurfaceVariant,
+                          ),
+                        ),
+                        Text(
+                          'P ${pPct.toStringAsFixed(0)}% : F ${fPct.toStringAsFixed(0)}% : C ${cPct.toStringAsFixed(0)}%',
+                          style: theme.textTheme.labelSmall?.copyWith(
+                            fontWeight: FontWeight.bold,
+                            color: theme.colorScheme.primary,
+                          ),
+                        ),
+                      ],
+                    ),
+                    const SizedBox(height: 12),
+                    _PfcRow(
+                      label: 'P (タンパク質)',
+                      current: currentProtein,
+                      target: targetProtein,
+                      color: theme.colorScheme.primary,
+                      unit: 'g',
+                      caloriePercentage: pPct,
+                    ),
+                    const SizedBox(height: 12),
+                    _PfcRow(
+                      label: 'F (脂質)',
+                      current: currentFat,
+                      target: targetFat,
+                      color: theme.colorScheme.secondary,
+                      unit: 'g',
+                      caloriePercentage: fPct,
+                    ),
+                    const SizedBox(height: 12),
+                    _PfcRow(
+                      label: 'C (炭水化物)',
+                      current: currentCarbs,
+                      target: targetCarbs,
+                      color: theme.colorScheme.tertiary,
+                      unit: 'g',
+                      caloriePercentage: cPct,
+                    ),
+                  ],
+                );
+              },
             ),
           ],
         ),
@@ -90,6 +132,7 @@ class _PfcRow extends StatelessWidget {
   final double target;
   final Color color;
   final String unit;
+  final double caloriePercentage;
 
   const _PfcRow({
     required this.label,
@@ -97,37 +140,82 @@ class _PfcRow extends StatelessWidget {
     required this.target,
     required this.color,
     required this.unit,
+    required this.caloriePercentage,
   });
 
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
+    final isOver = current > target && target > 0;
     final progress = target > 0 ? (current / target).clamp(0.0, 1.0) : 0.0;
     final remaining = target - current;
+    final overAmount = current - target;
+
+    final progressColor = isOver ? theme.colorScheme.error : color;
 
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
         Row(
           mainAxisAlignment: MainAxisAlignment.spaceBetween,
+          crossAxisAlignment: CrossAxisAlignment.center,
           children: [
-            Text(
-              label,
-              style: theme.textTheme.bodyMedium?.copyWith(
-                fontWeight: FontWeight.w600,
-                color: theme.colorScheme.onSurface,
-              ),
+            Row(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                Text(
+                  label,
+                  style: theme.textTheme.bodyMedium?.copyWith(
+                    fontWeight: FontWeight.w600,
+                    color: theme.colorScheme.onSurface,
+                  ),
+                ),
+                const SizedBox(width: 6),
+                Container(
+                  padding: const EdgeInsets.symmetric(horizontal: 5, vertical: 1.5),
+                  decoration: BoxDecoration(
+                    color: color.withOpacity(0.12),
+                    borderRadius: BorderRadius.circular(4),
+                  ),
+                  child: Text(
+                    '${caloriePercentage.toStringAsFixed(1)}%',
+                    style: theme.textTheme.labelSmall?.copyWith(
+                      color: color,
+                      fontWeight: FontWeight.bold,
+                      fontSize: 10,
+                    ),
+                  ),
+                ),
+              ],
             ),
             const SizedBox(width: 8),
             Flexible(
-              child: Text(
-                '${current.toStringAsFixed(1)} / ${target.toStringAsFixed(1)}$unit (残 ${remaining > 0 ? remaining.toStringAsFixed(1) : '0'}$unit)',
-                style: theme.textTheme.bodySmall?.copyWith(
-                  color: theme.colorScheme.onSurfaceVariant,
-                  fontSize: 11,
-                ),
-                overflow: TextOverflow.ellipsis,
+              child: RichText(
                 textAlign: TextAlign.right,
+                overflow: TextOverflow.ellipsis,
+                text: TextSpan(
+                  style: theme.textTheme.bodySmall?.copyWith(
+                    color: theme.colorScheme.onSurfaceVariant,
+                    fontSize: 11,
+                  ),
+                  children: [
+                    TextSpan(
+                      text: '${current.toStringAsFixed(1)} / ${target.toStringAsFixed(1)}$unit ',
+                    ),
+                    if (isOver)
+                      TextSpan(
+                        text: '(${overAmount.toStringAsFixed(1)}$unit 超過)',
+                        style: TextStyle(
+                          color: theme.colorScheme.error,
+                          fontWeight: FontWeight.bold,
+                        ),
+                      )
+                    else
+                      TextSpan(
+                        text: '(残 ${remaining > 0 ? remaining.toStringAsFixed(1) : '0'}$unit)',
+                      ),
+                  ],
+                ),
               ),
             ),
           ],
@@ -136,10 +224,10 @@ class _PfcRow extends StatelessWidget {
         ClipRRect(
           borderRadius: BorderRadius.circular(4),
           child: LinearProgressIndicator(
-            value: progress,
+            value: isOver ? 1.0 : progress,
             minHeight: 6,
             backgroundColor: theme.colorScheme.surfaceContainerHighest,
-            valueColor: AlwaysStoppedAnimation<Color>(color),
+            valueColor: AlwaysStoppedAnimation<Color>(progressColor),
           ),
         ),
       ],
