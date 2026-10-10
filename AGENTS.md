@@ -73,3 +73,36 @@ See [DESIGN_SYSTEM.md](file:///c:/devlop/pfc-health-tracker/DESIGN_SYSTEM.md) fo
 - **作業開始前**: 必ず上記ファイルを読み込み、現在完了しているステップと未完了のタスクを確認して続きから着手する。
 - **タスク完了時**: 各タスクが完了・検証されるごとに、該当のチェックボックスを `[ ]` から `[x]` に随時更新して最新状態を保つこと。
 
+## リモート修正・スマホ実機プレビュー運用ルール (Remote Mobile Preview Workflow)
+ユーザーから「スマホで見たい」「リモートで確認したい」「外部WiFiから見られるようにして」などの要望や、リモート操作による修正指示を受けた際は、必ず以下の手順でスマホ実機（iPhone PWA）から即座に動作確認できる環境を提供すること。
+
+### 1. 修正・検証・ビルド手順
+1. コード修正後、静的解析（`flutter analyze`）と単体テスト（`flutter test`）を実施。
+2. 本番用Webリリースビルドを実行:
+   ```bash
+   flutter build web --release
+   ```
+   ※ デバッグビルド（`flutter run`）ではなく、必ずリリースビルドを使用すること（モバイルSafariでの通信タイムアウトや白画面防止）。
+
+### 2. 静的Web配信サーバーの起動
+`scripts/serve_web.js`（Node.js標準）を用いてポート8085で配信:
+```bash
+node scripts/serve_web.js
+```
+- **重要**: `.wasm` や `.js` のMIMEタイプおよびCORSヘッダーを保証し、`127.0.0.1:8085`（IPv4）でリッスンすること。
+
+### 3. Cloudflare Tunnel による安全な外部公開
+トンネルを立ち上げてHTTPSで外部からアクセス可能にする:
+```bash
+npx --yes cloudflared tunnel --url http://127.0.0.1:8085
+```
+- **重要ポイント**:
+  - URL指定は `http://localhost:8085` ではなく **`http://127.0.0.1:8085`** を指定すること（IPv6解決による502 Bad Gatewayを防ぐため）。
+  - `localtunnel` ではなく **Cloudflare Tunnel** を使用すること（パスワード画面によるスクリプト読み込みブロック・白画面化を防ぐため）。
+- 発行された `https://*.trycloudflare.com` のURLをユーザーへ報告すること。
+
+### 4. iPhone実機（440px）レイアウト配慮
+- `MaterialApp.builder` で最大幅440pxのフレーム制限を保持。
+- すべてのテキストやRowコンポーネントは `Flexible` / `RichText` / `Wrap` を使用し、RenderFlexオーバーフローを絶対に出さないこと。
+- `web/index.html` のスプラッシュ画面フェイルセーフは15秒とし、Flutter側の初回描画完了（`removeWebSplash()`）で自然に消える制御を維持すること。
+
