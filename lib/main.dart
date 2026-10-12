@@ -1,10 +1,14 @@
 import 'dart:ui';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
-import 'package:google_fonts/google_fonts.dart';
 import 'package:intl/date_symbol_data_local.dart';
 import 'core/theme/app_theme.dart';
 import 'core/utils/web_splash_remover.dart';
+import 'models/food_master.dart';
+import 'models/meal_record.dart';
+import 'models/recipe.dart';
+import 'models/user_profile.dart';
+import 'models/weight_log.dart';
 import 'providers/food_master_provider.dart';
 import 'providers/meal_provider.dart';
 import 'providers/user_provider.dart';
@@ -16,8 +20,8 @@ void main() async {
   WidgetsFlutterBinding.ensureInitialized();
   await initializeDateFormatting('ja_JP', null);
 
-  // ローカルストレージ読み込みとフォントプリロードを並列実行して起動を最速化
-  final loadDataFuture = Future.wait([
+  // ローカルストレージの保存データを並列読み込み
+  final results = await Future.wait([
     StorageService.loadUserProfile(),
     StorageService.loadWeightLogs(),
     StorageService.loadMeals(),
@@ -25,24 +29,11 @@ void main() async {
     StorageService.loadFoodMasters(),
   ]);
 
-  // Noto Sans JP (Regular 400 & SemiBold 600) を最大800msだけ事前待機
-  // 取得が間に合わなくても端末のシステムフォント（Hiragino/Meiryo）ですぐに起動
-  final preloadFontsFuture = GoogleFonts.pendingFonts([
-    GoogleFonts.notoSansJp(fontWeight: FontWeight.w400),
-    GoogleFonts.notoSansJp(fontWeight: FontWeight.w600),
-  ]).timeout(const Duration(milliseconds: 800), onTimeout: () => []);
-
-  final results = await Future.wait([
-    loadDataFuture,
-    preloadFontsFuture,
-  ]);
-
-  final savedData = results[0] as List<dynamic>;
-  final savedProfile = savedData[0] as dynamic;
-  final savedWeights = savedData[1] as dynamic;
-  final savedMeals = savedData[2] as dynamic;
-  final savedRecipes = savedData[3] as dynamic;
-  final savedFoodMasters = savedData[4] as dynamic;
+  final savedProfile = results[0] as UserProfile?;
+  final savedWeights = results[1] as List<WeightLog>?;
+  final savedMeals = results[2] as List<MealRecord>?;
+  final savedRecipes = results[3] as List<Recipe>?;
+  final savedFoodMasters = results[4] as List<FoodMaster>?;
 
   runApp(
     ProviderScope(
