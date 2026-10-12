@@ -23,9 +23,10 @@ const MIME_TYPES = {
 };
 
 const server = http.createServer((req, res) => {
-  // CORSヘッダーおよびCross-Origin分離ヘッダー（WASM安定用）
+  // CORSヘッダーおよびCross-Origin分離ヘッダー（WASM / skwasm高速化）
   res.setHeader('Access-Control-Allow-Origin', '*');
-  res.setHeader('Cross-Origin-Opener-Policy', 'same-origin-allow-popups');
+  res.setHeader('Cross-Origin-Opener-Policy', 'same-origin');
+  res.setHeader('Cross-Origin-Embedder-Policy', 'credentialless');
 
   let reqPath = decodeURI(req.url.split('?')[0]);
   if (reqPath === '/' || reqPath === '') {
