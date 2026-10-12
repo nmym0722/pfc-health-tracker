@@ -26,7 +26,6 @@ const server = http.createServer((req, res) => {
   // CORSヘッダーおよびCross-Origin分離ヘッダー（WASM安定用）
   res.setHeader('Access-Control-Allow-Origin', '*');
   res.setHeader('Cross-Origin-Opener-Policy', 'same-origin-allow-popups');
-  res.setHeader('Cache-Control', 'no-cache');
 
   let reqPath = decodeURI(req.url.split('?')[0]);
   if (reqPath === '/' || reqPath === '') {
@@ -51,6 +50,13 @@ const server = http.createServer((req, res) => {
     const ext = path.extname(filePath).toLowerCase();
     const contentType = MIME_TYPES[ext] || 'application/octet-stream';
     res.setHeader('Content-Type', contentType);
+
+    // HTMLは常に最新、静的アセット（wasm/js等）はキャッシュしてスマホ実機確認を爆速化
+    if (ext === '.html') {
+      res.setHeader('Cache-Control', 'no-cache, no-store, must-revalidate');
+    } else {
+      res.setHeader('Cache-Control', 'public, max-age=86400, immutable');
+    }
 
     const stream = fs.createReadStream(filePath);
     stream.pipe(res);
