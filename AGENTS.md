@@ -63,9 +63,8 @@ See [DESIGN_SYSTEM.md](file:///c:/devlop/pfc-health-tracker/DESIGN_SYSTEM.md) fo
 
 ## Deployment Workflow (Vercel)
 本プロジェクト（Flutter Web）はVercelのGit自動ビルド環境（Flutter SDK）がないため、**Gitへのプッシュ時およびデプロイ指示を受けた際は、必ず以下の手順でVercelへ本番デプロイを実行すること**:
-1. `flutter build web`（本番用Webビルド）
-2. `build/web` ディレクトリにて `npx vercel --prod --scope toeicapps --yes` を実行
-3. 本番URL（`https://pfc-tracker-tau.vercel.app/`）が正常に更新されたことを確認
+1. `npm run deploy`（または `flutter build web --wasm && node scripts/deploy_vercel.js`）を実行
+2. 本番URL（`https://pfc-tracker-tau.vercel.app/`）が正常に更新されたことを確認
 
 ## 進捗管理・実装ロードマップ（Obsidian連携ルール）
 本プロジェクトの実装・修正作業を行う際は、必ず以下のObsidian保管庫内のロードマップ・TODOファイルを参照し、最新の進捗状態から作業を再開すること。

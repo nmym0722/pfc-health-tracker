@@ -7,6 +7,6 @@
     "preview": "node scripts/preview.js",
     "serve": "node scripts/serve_web.js",
     "tunnel": "npx cloudflared tunnel --url http://127.0.0.1:8085",
-    "deploy": "flutter build web --wasm && cd build/web && npx vercel --prod --yes"
+    "deploy": "flutter build web --wasm && node scripts/deploy_vercel.js"
   }
 }
