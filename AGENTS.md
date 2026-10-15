@@ -57,9 +57,9 @@ See [DESIGN_SYSTEM.md](file:///c:/devlop/pfc-health-tracker/DESIGN_SYSTEM.md) fo
 7. **Anti-Patterns**: No tech gradients, no unrequested blur/glassmorphism, text >= 11sp, no pure black text on light mode.
 
 ## Typography Settings
-- **Primary Font**: Use `GoogleFonts.notoSansJp()` for all Japanese & alphanumeric text.
+- **Primary Font**: OS標準日本語フォントスタック（`AppTheme.systemFontFallbacks`: `-apple-system`, `Hiragino Sans`, `Yu Gothic UI`, `Meiryo`, `sans-serif`）を使用。初期ロード高速化とFOUT/豆腐防止のため外部Webフォント（GoogleFonts）は使用禁止。
 - **Weights**: Restrict to `FontWeight.w400` (body/labels) and `FontWeight.w600` (numbers/titles).
-- **Tabular Figures**: For nutrition metrics and calorie counters, apply tabular figures (`FontFeature.tabularFigures()`) to ensure numbers align neatly in lists.
+- **Tabular Figures**: For nutrition metrics and calorie counters, apply tabular figures (`FontFeature.tabularFigures()` / `AppTheme.tabularNumbers`) to ensure numbers align neatly in lists.
 
 ## Deployment Workflow (Vercel)
 本プロジェクト（Flutter Web）はVercelのGit自動ビルド環境（Flutter SDK）がないため、**Gitへのプッシュ時およびデプロイ指示を受けた際は、必ず以下の手順でVercelへ本番デプロイを実行すること**:

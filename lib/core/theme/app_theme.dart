@@ -1,5 +1,4 @@
 import 'package:flutter/material.dart';
-import 'package:google_fonts/google_fonts.dart';
 
 class AppTheme {
   // M3 セマンティックカラー定義
@@ -21,17 +20,32 @@ class AppTheme {
   static const Color outline = Color(0xFFE5E7EB);
   static const Color outlineVariant = Color(0xFFD1D5DB);
 
+  /// OS標準日本語フォント優先スタック（iOS/Mac: Hiragino/-apple-system, Win: Yu Gothic/Meiryo, Android: Noto Sans CJK/Roboto）
+  static const List<String> systemFontFallbacks = [
+    '-apple-system',
+    'BlinkMacSystemFont',
+    'Hiragino Sans',
+    'Hiragino Kaku Gothic ProN',
+    'Yu Gothic UI',
+    'Yu Gothic',
+    'Meiryo',
+    'Noto Sans CJK JP',
+    'Roboto',
+    'sans-serif',
+  ];
+
   /// 栄養素やカロリー数値用の等幅数字（Tabular Figures）TextStyleヘルパー
   static TextStyle tabularNumbers({
     double? fontSize,
     FontWeight fontWeight = FontWeight.w600,
     Color? color,
   }) {
-    return GoogleFonts.notoSansJp(
+    return TextStyle(
       fontSize: fontSize,
       fontWeight: fontWeight,
       color: color,
       fontFeatures: const [FontFeature.tabularFigures()],
+      fontFamilyFallback: systemFontFallbacks,
     );
   }
 
@@ -40,38 +54,37 @@ class AppTheme {
 
   static ThemeData _buildLightTheme() {
     final baseTextTheme = ThemeData.light().textTheme;
-    const fontFallbacks = [
-      'Noto Sans JP',
-      'Hiragino Sans',
-      'Meiryo',
-      'Yu Gothic',
-      'sans-serif',
-    ];
     
-    // Noto Sans JP を適用し、ウェイトを w400(本文/ラベル) と w600(タイトル/数値) に統一
-    final notoSansTextTheme = GoogleFonts.notoSansJpTextTheme(baseTextTheme).copyWith(
-      displayLarge: GoogleFonts.notoSansJp(fontWeight: FontWeight.w600, color: onSurface),
-      displayMedium: GoogleFonts.notoSansJp(fontWeight: FontWeight.w600, color: onSurface),
-      displaySmall: GoogleFonts.notoSansJp(fontWeight: FontWeight.w600, color: onSurface),
-      headlineLarge: GoogleFonts.notoSansJp(fontWeight: FontWeight.w600, color: onSurface),
-      headlineMedium: GoogleFonts.notoSansJp(fontWeight: FontWeight.w600, color: onSurface),
-      headlineSmall: GoogleFonts.notoSansJp(fontWeight: FontWeight.w600, color: onSurface),
-      titleLarge: GoogleFonts.notoSansJp(fontWeight: FontWeight.w600, color: onSurface),
-      titleMedium: GoogleFonts.notoSansJp(fontWeight: FontWeight.w600, color: onSurface),
-      titleSmall: GoogleFonts.notoSansJp(fontWeight: FontWeight.w600, color: onSurface),
-      bodyLarge: GoogleFonts.notoSansJp(fontWeight: FontWeight.w400, color: onSurface),
-      bodyMedium: GoogleFonts.notoSansJp(fontWeight: FontWeight.w400, color: onSurface),
-      bodySmall: GoogleFonts.notoSansJp(fontWeight: FontWeight.w400, color: onSurfaceVariant),
-      labelLarge: GoogleFonts.notoSansJp(fontWeight: FontWeight.w400, color: onSurface),
-      labelMedium: GoogleFonts.notoSansJp(fontWeight: FontWeight.w400, color: onSurfaceVariant),
-      labelSmall: GoogleFonts.notoSansJp(fontWeight: FontWeight.w400, color: onSurfaceVariant),
+    // OS標準フォントを適用し、ウェイトを w400(本文/ラベル) と w600(タイトル/数値) に統一
+    TextStyle style({required FontWeight weight, required Color color, double? size}) => TextStyle(
+      fontWeight: weight,
+      color: color,
+      fontSize: size,
+      fontFamilyFallback: systemFontFallbacks,
+    );
+
+    final systemTextTheme = baseTextTheme.copyWith(
+      displayLarge: style(weight: FontWeight.w600, color: onSurface),
+      displayMedium: style(weight: FontWeight.w600, color: onSurface),
+      displaySmall: style(weight: FontWeight.w600, color: onSurface),
+      headlineLarge: style(weight: FontWeight.w600, color: onSurface),
+      headlineMedium: style(weight: FontWeight.w600, color: onSurface),
+      headlineSmall: style(weight: FontWeight.w600, color: onSurface),
+      titleLarge: style(weight: FontWeight.w600, color: onSurface),
+      titleMedium: style(weight: FontWeight.w600, color: onSurface),
+      titleSmall: style(weight: FontWeight.w600, color: onSurface),
+      bodyLarge: style(weight: FontWeight.w400, color: onSurface),
+      bodyMedium: style(weight: FontWeight.w400, color: onSurface),
+      bodySmall: style(weight: FontWeight.w400, color: onSurfaceVariant),
+      labelLarge: style(weight: FontWeight.w400, color: onSurface),
+      labelMedium: style(weight: FontWeight.w400, color: onSurfaceVariant),
+      labelSmall: style(weight: FontWeight.w400, color: onSurfaceVariant),
     );
 
     return ThemeData(
       useMaterial3: true,
-      fontFamily: GoogleFonts.notoSansJp().fontFamily,
-      fontFamilyFallback: fontFallbacks,
-      textTheme: notoSansTextTheme,
+      fontFamilyFallback: systemFontFallbacks,
+      textTheme: systemTextTheme,
       colorScheme: const ColorScheme(
         brightness: Brightness.light,
         primary: primary,
@@ -97,10 +110,10 @@ class AppTheme {
         elevation: 0,
         centerTitle: true,
         scrolledUnderElevation: 1,
-        titleTextStyle: GoogleFonts.notoSansJp(
+        titleTextStyle: style(
           color: onSurface,
-          fontSize: 18,
-          fontWeight: FontWeight.w600,
+          size: 18,
+          weight: FontWeight.w600,
         ),
       ),
       cardTheme: CardTheme(
@@ -117,15 +130,15 @@ class AppTheme {
         elevation: 2,
         labelTextStyle: WidgetStateProperty.resolveWith((states) {
           if (states.contains(WidgetState.selected)) {
-            return GoogleFonts.notoSansJp(
-              fontSize: 12,
-              fontWeight: FontWeight.w600,
+            return style(
+              size: 12,
+              weight: FontWeight.w600,
               color: onPrimaryContainer,
             );
           }
-          return GoogleFonts.notoSansJp(
-            fontSize: 12,
-            fontWeight: FontWeight.w400,
+          return style(
+            size: 12,
+            weight: FontWeight.w400,
             color: onSurfaceVariant,
           );
         }),
@@ -135,7 +148,7 @@ class AppTheme {
           backgroundColor: primary,
           foregroundColor: onPrimary,
           minimumSize: const Size(88, 48), // 48dp minimum touch target
-          textStyle: GoogleFonts.notoSansJp(fontWeight: FontWeight.w600),
+          textStyle: style(weight: FontWeight.w600, color: onPrimary),
           shape: RoundedRectangleBorder(
             borderRadius: BorderRadius.circular(9999), // M3 Pill Button
           ),
@@ -145,13 +158,13 @@ class AppTheme {
       filledButtonTheme: FilledButtonThemeData(
         style: FilledButton.styleFrom(
           minimumSize: const Size(88, 48),
-          textStyle: GoogleFonts.notoSansJp(fontWeight: FontWeight.w600),
+          textStyle: style(weight: FontWeight.w600, color: onPrimary),
         ),
       ),
       outlinedButtonTheme: OutlinedButtonThemeData(
         style: OutlinedButton.styleFrom(
           minimumSize: const Size(88, 48),
-          textStyle: GoogleFonts.notoSansJp(fontWeight: FontWeight.w600),
+          textStyle: style(weight: FontWeight.w600, color: primary),
         ),
       ),
     );
