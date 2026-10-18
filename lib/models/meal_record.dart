@@ -61,6 +61,35 @@ class MealItem {
     return name.replaceFirst(RegExp(r'[\s]*[\(（]' + RegExp.escape(rName) + r'[\)）]$'), '').trim();
   }
 
+  MealItem copyWith({
+    String? id,
+    String? name,
+    String? foodId,
+    String? recipeId,
+    String? recipeName,
+    bool clearRecipeInfo = false,
+    double? amount,
+    String? unit,
+    double? calories,
+    double? protein,
+    double? fat,
+    double? carbs,
+  }) {
+    return MealItem(
+      id: id ?? this.id,
+      name: name ?? this.name,
+      foodId: foodId ?? this.foodId,
+      recipeId: clearRecipeInfo ? null : (recipeId ?? this.recipeId),
+      recipeName: clearRecipeInfo ? null : (recipeName ?? this.recipeName),
+      amount: amount ?? this.amount,
+      unit: unit ?? this.unit,
+      calories: calories ?? this.calories,
+      protein: protein ?? this.protein,
+      fat: fat ?? this.fat,
+      carbs: carbs ?? this.carbs,
+    );
+  }
+
   Map<String, dynamic> toJson() {
     return {
       'id': id,

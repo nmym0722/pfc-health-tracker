@@ -1,10 +1,9 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import '../core/utils/meal_assist_helper.dart';
 import 'home/home_screen.dart';
 import 'meal_input/meal_input_screen.dart';
 import 'weight/weight_screen.dart';
-import 'my_recipes/my_recipes_screen.dart';
-import '../models/meal_record.dart';
 
 /// ナビゲーションの現在のタブインデックスを管理するプロバイダー
 final navigationIndexProvider = StateProvider<int>((ref) => 0);
@@ -17,11 +16,10 @@ class MainNavigationScreen extends ConsumerStatefulWidget {
 }
 
 class _MainNavigationScreenState extends ConsumerState<MainNavigationScreen> {
-  final List<Widget> _screens = [
+  late final List<Widget> _screens = [
     const HomeScreen(),
-    const MealInputScreen(initialMealType: MealType.breakfast),
+    MealInputScreen(initialMealType: MealAssistHelper.inferDefaultMealType()),
     const WeightScreen(),
-    const MyRecipesScreen(),
   ];
 
   @override
@@ -53,11 +51,6 @@ class _MainNavigationScreenState extends ConsumerState<MainNavigationScreen> {
             icon: Icon(Icons.show_chart_outlined),
             selectedIcon: Icon(Icons.show_chart),
             label: '体重記録',
-          ),
-          NavigationDestination(
-            icon: Icon(Icons.restaurant_menu_outlined),
-            selectedIcon: Icon(Icons.restaurant_menu),
-            label: 'マイレシピ',
           ),
         ],
       ),

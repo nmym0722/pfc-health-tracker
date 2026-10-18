@@ -26,10 +26,6 @@ class _CalorieBalanceCardState extends ConsumerState<CalorieBalanceCard> {
         ? ref.watch(weekBalanceProvider)
         : ref.watch(monthBalanceProvider);
 
-    // 週初めでカレンダー週の確定日数が1日以下の場合、直近7日ローリングの平均で補正
-    final effectiveRecordedDays = (_selectedDays == 7 && report.recordedDays < 2 && rollingReport.recordedDays >= 2)
-        ? rollingReport.recordedDays
-        : report.recordedDays;
     final effectiveAvgCalories = (_selectedDays == 7 && report.recordedDays < 2 && rollingReport.recordedDays >= 2)
         ? rollingReport.averageDailyCalories
         : report.averageDailyCalories;
@@ -37,7 +33,6 @@ class _CalorieBalanceCardState extends ConsumerState<CalorieBalanceCard> {
         ? (user.goals.targetCalories - rollingReport.averageDailyCalories >= 150.0)
         : report.canHaveCheatMeal;
 
-    final absSavings = report.calorieSavings.abs().round();
     final progress = (report.totalCalories / (report.targetCaloriesTotal > 0 ? report.targetCaloriesTotal : 1))
         .clamp(0.0, 1.5);
 
@@ -125,12 +120,12 @@ class _CalorieBalanceCardState extends ConsumerState<CalorieBalanceCard> {
                   Expanded(
                     child: Text(
                       guardrails.isWarmupActive
-                          ? '代謝適応: 初期ウォームアップ期間中（水分急変を考慮してマスク中）'
+                          ? '代謝適応: 基礎データ収集中（あと数日記録すると自動推定が始まります）'
                           : user.currentAdaptedTdee != null
-                              ? '動的適応中: 実効TDEE ${effectiveTdee.toInt()} kcal/日 (${tdeeDiff >= 0 ? '+' : ''}${tdeeDiff.toInt()} kcal/日 補正)'
+                              ? '代謝適応中: 実効消費 ${effectiveTdee.toInt()} kcal/日 (${tdeeDiff >= 0 ? '+' : ''}${tdeeDiff.toInt()} kcal 補正中)'
                               : adaptiveResult.isReliable
-                                  ? '代謝適応の準備完了: 推定実効TDEE ${adaptiveResult.adaptedTdee.toInt()} kcal/日'
-                                  : '代謝適応: データ蓄積中（有効記録日数: ${adaptiveResult.completedIntakeDays}日）',
+                                  ? '代謝適応の準備完了: 推定消費 ${adaptiveResult.adaptedTdee.toInt()} kcal/日'
+                                  : '代謝適応: データ収集中（有効記録: ${adaptiveResult.completedIntakeDays}日分）',
                       style: theme.textTheme.bodySmall?.copyWith(
                         color: theme.colorScheme.onSurface,
                         fontWeight: FontWeight.w600,
@@ -145,7 +140,7 @@ class _CalorieBalanceCardState extends ConsumerState<CalorieBalanceCard> {
                       onPressed: () {
                         ref.read(applyAdaptedTdeeProvider)();
                         ScaffoldMessenger.of(context).showSnackBar(
-                          SnackBar(content: Text('実効TDEE（${adaptiveResult.adaptedTdee.toInt()} kcal/日）を目標に適用しました！')),
+                          SnackBar(content: Text('実効消費エネルギー（${adaptiveResult.adaptedTdee.toInt()} kcal/日）を目標に適用しました！')),
                         );
                       },
                       style: FilledButton.styleFrom(
@@ -161,103 +156,51 @@ class _CalorieBalanceCardState extends ConsumerState<CalorieBalanceCard> {
             ),
             const SizedBox(height: 12),
 
-            // チートデイ判定 / ペース診断バナー
-            Container(
-              padding: const EdgeInsets.all(12.0),
-              decoration: BoxDecoration(
-                color: effectiveRecordedDays == 0
-                    ? theme.colorScheme.surfaceContainerHighest.withOpacity(0.6)
-                    : effectiveRecordedDays == 1
-                        ? theme.colorScheme.surfaceContainerHighest
-                        : effectiveCanCheat
-                            ? theme.colorScheme.primaryContainer
-                            : report.calorieSavings < 0
-                                ? theme.colorScheme.errorContainer.withOpacity(0.6)
-                                : theme.colorScheme.surfaceContainerHighest,
-                borderRadius: BorderRadius.circular(12),
-              ),
-              child: Row(
-                children: [
-                  Icon(
-                    effectiveRecordedDays == 0
-                        ? Icons.info_outline
-                        : effectiveRecordedDays == 1
-                            ? Icons.hourglass_top_outlined
-                            : effectiveCanCheat
-                                ? Icons.stars
-                                : report.calorieSavings < 0
-                                    ? Icons.warning_amber_rounded
-                                    : Icons.info_outline,
-                    color: effectiveRecordedDays == 0
-                        ? theme.colorScheme.onSurfaceVariant
-                        : effectiveRecordedDays == 1
-                            ? theme.colorScheme.primary
-                            : effectiveCanCheat
-                                ? theme.colorScheme.onPrimaryContainer
-                                : report.calorieSavings < 0
-                                    ? theme.colorScheme.onErrorContainer
-                                    : theme.colorScheme.onSurfaceVariant,
-                    size: 24,
-                  ),
-                  const SizedBox(width: 10),
-                  Expanded(
-                    child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        Text(
-                          effectiveRecordedDays == 0
-                              ? '食事記録を入力するとペース分析が始まります'
-                              : effectiveRecordedDays == 1
-                                  ? 'データ蓄積中 (確定1日分: 平均 ${effectiveAvgCalories.round()} kcal)'
-                                  : effectiveCanCheat
-                                      ? 'チートデイOK！ (直近平均: ${effectiveAvgCalories.round()} kcal)'
-                                      : report.calorieSavings < 0
-                                          ? '目標カロリー超過中 ($absSavings kcal オーバー)'
-                                          : '目標通り推移中 (直近平均: ${effectiveAvgCalories.round()} kcal)',
-                          style: TextStyle(
-                            fontWeight: FontWeight.bold,
-                            fontSize: 13,
-                            color: effectiveRecordedDays == 0
-                                ? theme.colorScheme.onSurface
-                                : effectiveRecordedDays == 1
-                                    ? theme.colorScheme.onSurface
-                                    : effectiveCanCheat
-                                        ? theme.colorScheme.onPrimaryContainer
-                                        : report.calorieSavings < 0
-                                            ? theme.colorScheme.onErrorContainer
-                                            : theme.colorScheme.onSurface,
-                          ),
-                        ),
-                        const SizedBox(height: 2),
-                        Text(
-                          effectiveRecordedDays == 0
-                              ? '日々の食事を記録していくと、ここに着地予測やチートデイ診断が表示されます。'
-                              : effectiveRecordedDays == 1
-                                  ? '2日以上記録すると、週全体の着地予測とチートデイ診断が精度高く算出されます。'
-                                  : effectiveCanCheat
-                                      ? '目標よりカロリーを抑えられています。今週末にご褒美ミールを楽しめます！'
-                                      : report.calorieSavings < 0
-                                          ? '少しずつプラスになっています。数日間の食事を意識して調整しましょう。'
-                                          : '順調なペースです。チートデイを設けるにはあと少し貯金を作ると安心です。',
-                          style: TextStyle(
-                            fontSize: 11,
-                            color: effectiveRecordedDays == 0
-                                ? theme.colorScheme.onSurfaceVariant
-                                : effectiveRecordedDays == 1
-                                    ? theme.colorScheme.onSurfaceVariant
-                                    : effectiveCanCheat
-                                        ? theme.colorScheme.onPrimaryContainer.withOpacity(0.85)
-                                        : report.calorieSavings < 0
-                                            ? theme.colorScheme.onErrorContainer.withOpacity(0.85)
-                                            : theme.colorScheme.onSurfaceVariant,
-                          ),
-                        ),
-                      ],
+            // チートデイ判定バナー（条件達成時のみポップ表示）
+            if (effectiveCanCheat) ...[
+              Container(
+                padding: const EdgeInsets.all(12.0),
+                decoration: BoxDecoration(
+                  color: theme.colorScheme.primaryContainer,
+                  borderRadius: BorderRadius.circular(12),
+                  border: Border.all(color: theme.colorScheme.primary.withOpacity(0.5)),
+                ),
+                child: Row(
+                  children: [
+                    Icon(
+                      Icons.stars,
+                      color: theme.colorScheme.onPrimaryContainer,
+                      size: 24,
                     ),
-                  ),
-                ],
+                    const SizedBox(width: 10),
+                    Expanded(
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          Text(
+                            'チートデイOK！ (直近平均: ${effectiveAvgCalories.round()} kcal)',
+                            style: TextStyle(
+                              fontWeight: FontWeight.bold,
+                              fontSize: 13,
+                              color: theme.colorScheme.onPrimaryContainer,
+                            ),
+                          ),
+                          const SizedBox(height: 2),
+                          Text(
+                            '目標よりカロリーを抑えられています。今週はご褒美ミールを楽しめます！',
+                            style: TextStyle(
+                              fontSize: 11,
+                              color: theme.colorScheme.onPrimaryContainer.withOpacity(0.85),
+                            ),
+                          ),
+                        ],
+                      ),
+                    ),
+                  ],
+                ),
               ),
-            ),
+              const SizedBox(height: 12),
+            ],
             const SizedBox(height: 16),
 
             // プログレスバー
@@ -297,59 +240,102 @@ class _CalorieBalanceCardState extends ConsumerState<CalorieBalanceCard> {
             ),
             const SizedBox(height: 16),
 
-            // 詳細メトリクスグリッド (1日平均 / 純収支 / 体脂肪換算)
-            Container(
-              padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
-              decoration: BoxDecoration(
-                color: theme.colorScheme.surfaceContainerHighest.withOpacity(0.4),
-                borderRadius: BorderRadius.circular(10),
-              ),
-              child: Row(
-                mainAxisAlignment: MainAxisAlignment.spaceAround,
-                children: [
-                  Expanded(
-                    child: _buildMetricColumn(
-                      theme,
-                      title: '1日平均摂取',
-                      value: '${report.averageDailyCalories.round()} kcal',
-                      subtitle: '確定${report.recordedDays}日 / 目標${(report.targetCaloriesTotal / report.days).round()}',
-                    ),
-                  ),
-                  Container(width: 1, height: 36, color: theme.colorScheme.outlineVariant),
-                  Expanded(
-                    child: _buildMetricColumn(
-                      theme,
-                      title: '${_selectedDays == 7 ? '今週' : '月末'}予測純収支',
-                      value: '${report.netBalance > 0 ? '+' : ''}${report.netBalance.round()} kcal',
-                      subtitle: '対消費: ${report.tdeeTotal.round()}',
-                      valueColor: report.netBalance <= 0
-                          ? theme.colorScheme.primary
-                          : theme.colorScheme.error,
-                    ),
-                  ),
-                  Container(width: 1, height: 36, color: theme.colorScheme.outlineVariant),
-                  Expanded(
-                    child: _buildMetricColumn(
-                      theme,
-                      title: '${_selectedDays == 7 ? '今週' : '月末'}体脂肪予測',
-                      value: '${report.fatChangeKg > 0 ? '+' : ''}${report.fatChangeKg.toStringAsFixed(2)} kg',
-                      subtitle: '7,200kcal/kg',
-                      valueColor: report.fatChangeKg <= 0
-                          ? theme.colorScheme.primary
-                          : theme.colorScheme.error,
-                    ),
-                  ),
-                ],
-              ),
-            ),
-            const SizedBox(height: 14),
+            // 詳細メトリクスグリッド (7日平均摂取 / 純収支 / 体脂肪換算)
+            Builder(
+              builder: (context) {
+                final diff = rollingReport.averageDailyCalories - user.goals.targetCalories;
+                final isWithinTarget = diff.abs() <= 150.0;
+                final isUnder = diff < -150.0;
 
-            // ローリング7日間平均カロリー サマリーカード
-            _buildRolling7DaySummary(
-              theme,
-              user.goals.targetCalories,
-              rollingReport.averageDailyCalories,
-              rollingReport.recordedDays,
+                return Column(
+                  children: [
+                    Container(
+                      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
+                      decoration: BoxDecoration(
+                        color: theme.colorScheme.surfaceContainerHighest.withOpacity(0.4),
+                        borderRadius: BorderRadius.circular(10),
+                      ),
+                      child: Row(
+                        mainAxisAlignment: MainAxisAlignment.spaceAround,
+                        children: [
+                          Expanded(
+                            child: _buildMetricColumn(
+                              theme,
+                              title: '過去7日の平均摂取',
+                              value: '${rollingReport.averageDailyCalories.round()} kcal',
+                              subtitle: '目標比: ${diff >= 0 ? '+' : ''}${diff.round()} kcal',
+                              valueColor: isWithinTarget
+                                  ? theme.colorScheme.primary
+                                  : isUnder
+                                      ? theme.colorScheme.secondary
+                                      : theme.colorScheme.error,
+                            ),
+                          ),
+                          Container(width: 1, height: 36, color: theme.colorScheme.outlineVariant),
+                          Expanded(
+                            child: _buildMetricColumn(
+                              theme,
+                              title: '${_selectedDays == 7 ? '今週' : '月末'}の予測収支',
+                              value: '${report.netBalance > 0 ? '+' : ''}${report.netBalance.round()} kcal',
+                              subtitle: '対消費: ${report.tdeeTotal.round()} kcal',
+                              valueColor: report.netBalance <= 0
+                                  ? theme.colorScheme.primary
+                                  : theme.colorScheme.error,
+                            ),
+                          ),
+                          Container(width: 1, height: 36, color: theme.colorScheme.outlineVariant),
+                          Expanded(
+                            child: _buildMetricColumn(
+                              theme,
+                              title: '${_selectedDays == 7 ? '今週' : '月末'}の体脂肪予測',
+                              value: '${report.fatChangeKg > 0 ? '+' : ''}${report.fatChangeKg.toStringAsFixed(2)} kg',
+                              subtitle: '(7,200kcal/kg換算)',
+                              valueColor: report.fatChangeKg <= 0
+                                  ? theme.colorScheme.primary
+                                  : theme.colorScheme.error,
+                            ),
+                          ),
+                        ],
+                      ),
+                    ),
+                    const SizedBox(height: 8),
+                    // 1行ペースアドバイス
+                    Padding(
+                      padding: const EdgeInsets.symmetric(horizontal: 4.0),
+                      child: Row(
+                        children: [
+                          Icon(
+                            isWithinTarget
+                                ? Icons.check_circle_outline
+                                : isUnder
+                                    ? Icons.trending_down
+                                    : Icons.trending_up,
+                            color: isWithinTarget
+                                ? theme.colorScheme.primary
+                                : isUnder
+                                    ? theme.colorScheme.secondary
+                                    : theme.colorScheme.error,
+                            size: 15,
+                          ),
+                          const SizedBox(width: 6),
+                          Expanded(
+                            child: Text(
+                              rollingReport.recordedDays < 2
+                                  ? '記録を続けることで、1日の過食に惑わされない7日間の平滑化トレンドを評価できます。'
+                                  : isWithinTarget
+                                      ? '順調です。7日間の平均摂取は目標ペース内に綺麗に収まっています。'
+                                      : isUnder
+                                          ? '目標より控えめなペースです。代謝低下を防ぐためしっかりエネルギーを補給しましょう。'
+                                          : '7日平均が目標をやや上回っています。次の数食で脂質を少し調整すると安定します。',
+                              style: theme.textTheme.bodySmall?.copyWith(fontSize: 11),
+                            ),
+                          ),
+                        ],
+                      ),
+                    ),
+                  ],
+                );
+              },
             ),
           ],
         ),
@@ -357,96 +343,7 @@ class _CalorieBalanceCardState extends ConsumerState<CalorieBalanceCard> {
     );
   }
 
-  Widget _buildRolling7DaySummary(
-    ThemeData theme,
-    double targetCalories,
-    double rollingAverage,
-    int recordedDays,
-  ) {
-    final diff = rollingAverage - targetCalories;
-    final isWithinTarget = diff.abs() <= 150.0;
-    final isUnder = diff < -150.0;
 
-    return Container(
-      padding: const EdgeInsets.all(12),
-      decoration: BoxDecoration(
-        color: isWithinTarget
-            ? theme.colorScheme.primaryContainer.withOpacity(0.3)
-            : isUnder
-                ? theme.colorScheme.secondaryContainer.withOpacity(0.3)
-                : theme.colorScheme.errorContainer.withOpacity(0.3),
-        borderRadius: BorderRadius.circular(10),
-        border: Border.all(
-          color: isWithinTarget
-              ? theme.colorScheme.primary.withOpacity(0.3)
-              : isUnder
-                  ? theme.colorScheme.secondary.withOpacity(0.3)
-                  : theme.colorScheme.error.withOpacity(0.3),
-        ),
-      ),
-      child: Row(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Icon(
-            isWithinTarget
-                ? Icons.check_circle_outline
-                : isUnder
-                    ? Icons.trending_down
-                    : Icons.trending_up,
-            color: isWithinTarget
-                ? theme.colorScheme.primary
-                : isUnder
-                    ? theme.colorScheme.secondary
-                    : theme.colorScheme.error,
-            size: 20,
-          ),
-          const SizedBox(width: 10),
-          Expanded(
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Wrap(
-                  alignment: WrapAlignment.spaceBetween,
-                  crossAxisAlignment: WrapCrossAlignment.center,
-                  spacing: 4,
-                  runSpacing: 2,
-                  children: [
-                    Text(
-                      '直近7日ローリング平均: ${rollingAverage.round()} kcal/日',
-                      style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 12),
-                    ),
-                    Text(
-                      '目標比: ${diff >= 0 ? '+' : ''}${diff.round()} kcal',
-                      style: TextStyle(
-                        fontWeight: FontWeight.bold,
-                        fontSize: 11,
-                        color: isWithinTarget
-                            ? theme.colorScheme.primary
-                            : isUnder
-                                ? theme.colorScheme.secondary
-                                : theme.colorScheme.error,
-                      ),
-                    ),
-                  ],
-                ),
-                const SizedBox(height: 3),
-                Text(
-                  recordedDays < 2
-                      ? '記録を蓄積することで、1日の過食に惑わされない7日間の平滑化平均を評価できます。'
-                      : isWithinTarget
-                          ? '1日の食べ過ぎで焦る必要はありません。7日平均は目標ペース内に綺麗に収まっています。'
-                          : isUnder
-                              ? '目標より控えめなペースです。代謝低下を防ぐため、十分なエネルギー摂取を意識しましょう。'
-                              : '7日平均が目標をやや上回っています。次の数食で脂質を少し調整すると安定します。',
-                  style: theme.textTheme.bodySmall?.copyWith(fontSize: 10.5),
-                ),
-              ],
-            ),
-          ),
-        ],
-      ),
-    );
-  }
 
   Widget _buildMetricColumn(
     ThemeData theme, {

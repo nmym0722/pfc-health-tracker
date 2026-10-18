@@ -17,10 +17,16 @@ void main() {
     );
     await tester.pumpAndSettle();
 
-    // 1. ボトムナビゲーションの「マイレシピ」タブ（4番目）へ移動
-    final myRecipesTab = find.byIcon(Icons.restaurant_menu_outlined);
-    expect(myRecipesTab, findsOneWidget);
-    await tester.tap(myRecipesTab);
+    // 1. ボトムナビゲーションの「食事入力」タブへ移動
+    final mealInputTab = find.byIcon(Icons.add_circle_outline);
+    expect(mealInputTab, findsOneWidget);
+    await tester.tap(mealInputTab);
+    await tester.pumpAndSettle();
+
+    // 2. AppBarのマイレシピボタンをタップしてマイレシピ・食材ライブラリ画面へ移動
+    final myRecipesButton = find.byIcon(Icons.menu_book_outlined);
+    expect(myRecipesButton, findsOneWidget);
+    await tester.tap(myRecipesButton);
     await tester.pumpAndSettle();
 
     // 2. 「食材ライブラリ」タブを選択

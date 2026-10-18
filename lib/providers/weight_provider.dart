@@ -90,6 +90,13 @@ class WeightNotifier extends StateNotifier<List<WeightLog>> {
     state = [];
     StorageService.saveWeightLogs(state);
   }
+
+  /// バックアップからの一括復元
+  void replaceAll(List<WeightLog> logs) {
+    final sorted = [...logs]..sort((a, b) => a.date.compareTo(b.date));
+    state = sorted;
+    _syncLatestWeightToGoals();
+  }
 }
 
 final weightProvider = StateNotifierProvider<WeightNotifier, List<WeightLog>>((ref) {

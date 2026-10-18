@@ -27,6 +27,11 @@ class FoodMasterNotifier extends StateNotifier<List<FoodMaster>> {
     StorageService.saveFoodMasters(state);
   }
 
+  void replaceAll(List<FoodMaster> foods) {
+    state = [...foods];
+    StorageService.saveFoodMasters(state);
+  }
+
   void toggleFavorite(String foodId) {
     state = state.map((f) {
       if (f.id == foodId) {
@@ -131,6 +136,11 @@ class RecipeNotifier extends StateNotifier<List<Recipe>> {
     StorageService.saveRecipes(state);
   }
 
+  void updateRecipe(Recipe updatedRecipe) {
+    state = state.map((r) => r.id == updatedRecipe.id ? updatedRecipe : r).toList();
+    StorageService.saveRecipes(state);
+  }
+
   void removeRecipe(String recipeId) {
     state = state.where((r) => r.id != recipeId).toList();
     StorageService.saveRecipes(state);
@@ -138,6 +148,11 @@ class RecipeNotifier extends StateNotifier<List<Recipe>> {
 
   void clearAll() {
     state = [];
+    StorageService.saveRecipes(state);
+  }
+
+  void replaceAll(List<Recipe> recipes) {
+    state = [...recipes];
     StorageService.saveRecipes(state);
   }
 }

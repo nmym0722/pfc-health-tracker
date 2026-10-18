@@ -14,6 +14,16 @@ class RecipeIngredient {
   double get fat => (food.fat / food.baseAmount) * amount;
   double get carbs => (food.carbs / food.baseAmount) * amount;
 
+  RecipeIngredient copyWith({
+    FoodMaster? food,
+    double? amount,
+  }) {
+    return RecipeIngredient(
+      food: food ?? this.food,
+      amount: amount ?? this.amount,
+    );
+  }
+
   Map<String, dynamic> toJson() {
     return {
       'food': food.toJson(),
@@ -92,6 +102,27 @@ class Recipe {
   double get proteinPerServing => totalProtein / (servings > 0 ? servings : 1);
   double get fatPerServing => totalFat / (servings > 0 ? servings : 1);
   double get carbsPerServing => totalCarbs / (servings > 0 ? servings : 1);
+
+  Recipe copyWith({
+    String? id,
+    String? name,
+    String? description,
+    bool clearDescription = false,
+    int? servings,
+    List<RecipeIngredient>? ingredients,
+    MyListCategory? category,
+    DateTime? createdAt,
+  }) {
+    return Recipe(
+      id: id ?? this.id,
+      name: name ?? this.name,
+      description: clearDescription ? null : (description ?? this.description),
+      servings: servings ?? this.servings,
+      ingredients: ingredients ?? this.ingredients,
+      category: category ?? this.category,
+      createdAt: createdAt ?? this.createdAt,
+    );
+  }
 
   Map<String, dynamic> toJson() {
     return {

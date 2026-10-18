@@ -6,6 +6,7 @@ import '../../models/food_master.dart';
 import '../../providers/food_master_provider.dart';
 import '../../providers/meal_provider.dart';
 import '../common/food_edit_dialog.dart';
+import '../common/recipe_edit_dialog.dart';
 import '../profile/profile_settings_screen.dart';
 
 class MyRecipesScreen extends ConsumerStatefulWidget {
@@ -158,6 +159,19 @@ class _MyRecipesScreenState extends ConsumerState<MyRecipesScreen> {
                           ],
                         ],
                       ),
+                    ),
+                    IconButton(
+                      icon: const Icon(Icons.edit_outlined, size: 20),
+                      tooltip: 'マイレシピを編集',
+                      color: theme.colorScheme.primary,
+                      onPressed: () async {
+                        final edited = await RecipeEditDialog.show(context, recipe: recipe);
+                        if (edited != null && context.mounted) {
+                          ScaffoldMessenger.of(context).showSnackBar(
+                            SnackBar(content: Text('「${edited.name}」を更新しました')),
+                          );
+                        }
+                      },
                     ),
                     IconButton(
                       icon: const Icon(Icons.delete_outline, size: 20),

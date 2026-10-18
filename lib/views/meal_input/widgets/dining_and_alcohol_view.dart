@@ -24,8 +24,18 @@ class DiningAndAlcoholView extends ConsumerStatefulWidget {
   ConsumerState<DiningAndAlcoholView> createState() => _DiningAndAlcoholViewState();
 }
 
+enum DiningSubTab {
+  dining('外食メニュー', Icons.restaurant),
+  alcohol('お酒カウンター', Icons.wine_bar);
+
+  final String label;
+  final IconData icon;
+  const DiningSubTab(this.label, this.icon);
+}
+
 class _DiningAndAlcoholViewState extends ConsumerState<DiningAndAlcoholView> {
   late MealType _selectedMealType;
+  DiningSubTab _currentSubTab = DiningSubTab.dining;
 
   // 外食プリセット用ステート
   DiningPreset? _selectedPreset;
@@ -238,12 +248,31 @@ class _DiningAndAlcoholViewState extends ConsumerState<DiningAndAlcoholView> {
               });
             },
           ),
-          const SizedBox(height: 20),
+          const SizedBox(height: 12),
 
-          // ===================================================================
-          // セクション 1: 外食プリセット & 3段階スライダートグル
-          // ===================================================================
-          Card(
+          // 外食メニュー / お酒カウンター 切り替えセグメント
+          SegmentedButton<DiningSubTab>(
+            segments: DiningSubTab.values.map((tab) {
+              return ButtonSegment<DiningSubTab>(
+                value: tab,
+                icon: Icon(tab.icon, size: 16),
+                label: Text(tab.label),
+              );
+            }).toList(),
+            selected: {_currentSubTab},
+            onSelectionChanged: (newSel) {
+              setState(() {
+                _currentSubTab = newSel.first;
+              });
+            },
+          ),
+          const SizedBox(height: 16),
+
+          if (_currentSubTab == DiningSubTab.dining) ...[
+            // ===================================================================
+            // セクション 1: 外食プリセット & 3段階スライダートグル
+            // ===================================================================
+            Card(
             elevation: 0,
             shape: RoundedRectangleBorder(
               borderRadius: BorderRadius.circular(16),
@@ -383,12 +412,11 @@ class _DiningAndAlcoholViewState extends ConsumerState<DiningAndAlcoholView> {
               ),
             ),
           ),
-          const SizedBox(height: 24),
-
-          // ===================================================================
-          // セクション 2: アルコール専用クイックカウンター
-          // ===================================================================
-          Card(
+          ] else ...[
+            // ===================================================================
+            // セクション 2: アルコール専用クイックカウンター
+            // ===================================================================
+            Card(
             elevation: 0,
             shape: RoundedRectangleBorder(
               borderRadius: BorderRadius.circular(16),
@@ -566,6 +594,7 @@ class _DiningAndAlcoholViewState extends ConsumerState<DiningAndAlcoholView> {
               ),
             ),
           ),
+          ],
           const SizedBox(height: 24),
         ],
       ),

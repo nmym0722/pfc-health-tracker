@@ -182,8 +182,8 @@ void main() {
     await tester.tap(find.byIcon(Icons.add_circle_outline));
     await tester.pumpAndSettle();
 
-    // 2. 初期シードされているマイレシピ「蒸し鶏とブロッコリーの筋肉ボウル」の「食事に追加」をタップ
-    final addRecipeButton = find.text('食事に追加').first;
+    // 2. 初期シードされているマイレシピ「蒸し鶏とブロッコリーの筋肉ボウル」の追加アイコンをタップ
+    final addRecipeButton = find.byIcon(Icons.add_circle).first;
     expect(addRecipeButton, findsOneWidget);
     await tester.ensureVisible(addRecipeButton);
     await tester.pumpAndSettle();

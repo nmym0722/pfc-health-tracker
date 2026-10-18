@@ -20,17 +20,20 @@ class AppTheme {
   static const Color outline = Color(0xFFE5E7EB);
   static const Color outlineVariant = Color(0xFFD1D5DB);
 
-  /// OS標準日本語フォント優先スタック（iOS/Mac: Hiragino/-apple-system, Win: Yu Gothic/Meiryo, Android: Noto Sans CJK/Roboto）
+  /// OS標準日本語フォント優先スタック（Skia / CanvasKitが直接解決可能な日本語フォント名）
   static const List<String> systemFontFallbacks = [
-    '-apple-system',
-    'BlinkMacSystemFont',
+    // iOS / macOS
     'Hiragino Sans',
     'Hiragino Kaku Gothic ProN',
+    // Windows
     'Yu Gothic UI',
     'Yu Gothic',
     'Meiryo',
+    'MS PGothic',
+    // Android / Linux / ChromeOS
     'Noto Sans CJK JP',
-    'Roboto',
+    'Noto Sans JP',
+    // Webフォールバック
     'sans-serif',
   ];
 
@@ -41,6 +44,7 @@ class AppTheme {
     Color? color,
   }) {
     return TextStyle(
+      fontFamily: 'NotoSansJP',
       fontSize: fontSize,
       fontWeight: fontWeight,
       color: color,
@@ -49,21 +53,22 @@ class AppTheme {
     );
   }
 
-  /// キャッシュされたThemeData（毎フレームのフォントオブジェクト再生成を抑止）
+  /// アプリ共通テーマ（内包フォントNotoSansJPによる通信不要・最速即時描画）
   static final ThemeData lightTheme = _buildLightTheme();
 
   static ThemeData _buildLightTheme() {
     final baseTextTheme = ThemeData.light().textTheme;
     
-    // OS標準フォントを適用し、ウェイトを w400(本文/ラベル) と w600(タイトル/数値) に統一
+    // ベースとなるウェイトとカラーのスタイル定義
     TextStyle style({required FontWeight weight, required Color color, double? size}) => TextStyle(
+      fontFamily: 'NotoSansJP',
       fontWeight: weight,
       color: color,
       fontSize: size,
       fontFamilyFallback: systemFontFallbacks,
     );
 
-    final systemTextTheme = baseTextTheme.copyWith(
+    final customTextTheme = baseTextTheme.copyWith(
       displayLarge: style(weight: FontWeight.w600, color: onSurface),
       displayMedium: style(weight: FontWeight.w600, color: onSurface),
       displaySmall: style(weight: FontWeight.w600, color: onSurface),
@@ -83,8 +88,9 @@ class AppTheme {
 
     return ThemeData(
       useMaterial3: true,
+      fontFamily: 'NotoSansJP',
       fontFamilyFallback: systemFontFallbacks,
-      textTheme: systemTextTheme,
+      textTheme: customTextTheme,
       colorScheme: const ColorScheme(
         brightness: Brightness.light,
         primary: primary,
@@ -110,16 +116,16 @@ class AppTheme {
         elevation: 0,
         centerTitle: true,
         scrolledUnderElevation: 1,
-        titleTextStyle: style(
+        titleTextStyle: customTextTheme.titleLarge?.copyWith(
           color: onSurface,
-          size: 18,
-          weight: FontWeight.w600,
+          fontSize: 18,
+          fontWeight: FontWeight.w600,
         ),
       ),
       cardTheme: CardTheme(
         elevation: 0,
         shape: RoundedRectangleBorder(
-          borderRadius: BorderRadius.circular(12), // M3 Medium Radius
+          borderRadius: BorderRadius.circular(12),
           side: const BorderSide(color: outline, width: 1),
         ),
         color: Colors.white,
@@ -130,15 +136,15 @@ class AppTheme {
         elevation: 2,
         labelTextStyle: WidgetStateProperty.resolveWith((states) {
           if (states.contains(WidgetState.selected)) {
-            return style(
-              size: 12,
-              weight: FontWeight.w600,
+            return customTextTheme.labelMedium?.copyWith(
+              fontSize: 12,
+              fontWeight: FontWeight.w600,
               color: onPrimaryContainer,
             );
           }
-          return style(
-            size: 12,
-            weight: FontWeight.w400,
+          return customTextTheme.labelMedium?.copyWith(
+            fontSize: 12,
+            fontWeight: FontWeight.w400,
             color: onSurfaceVariant,
           );
         }),
@@ -147,10 +153,13 @@ class AppTheme {
         style: ElevatedButton.styleFrom(
           backgroundColor: primary,
           foregroundColor: onPrimary,
-          minimumSize: const Size(88, 48), // 48dp minimum touch target
-          textStyle: style(weight: FontWeight.w600, color: onPrimary),
+          minimumSize: const Size(88, 48),
+          textStyle: customTextTheme.labelLarge?.copyWith(
+            fontWeight: FontWeight.w600,
+            color: onPrimary,
+          ),
           shape: RoundedRectangleBorder(
-            borderRadius: BorderRadius.circular(9999), // M3 Pill Button
+            borderRadius: BorderRadius.circular(9999),
           ),
           elevation: 0,
         ),
@@ -158,13 +167,19 @@ class AppTheme {
       filledButtonTheme: FilledButtonThemeData(
         style: FilledButton.styleFrom(
           minimumSize: const Size(88, 48),
-          textStyle: style(weight: FontWeight.w600, color: onPrimary),
+          textStyle: customTextTheme.labelLarge?.copyWith(
+            fontWeight: FontWeight.w600,
+            color: onPrimary,
+          ),
         ),
       ),
       outlinedButtonTheme: OutlinedButtonThemeData(
         style: OutlinedButton.styleFrom(
           minimumSize: const Size(88, 48),
-          textStyle: style(weight: FontWeight.w600, color: primary),
+          textStyle: customTextTheme.labelLarge?.copyWith(
+            fontWeight: FontWeight.w600,
+            color: primary,
+          ),
         ),
       ),
     );

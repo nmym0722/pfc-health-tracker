@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:intl/intl.dart';
 import '../../models/user_profile.dart';
@@ -391,6 +392,39 @@ class _ProfileSettingsScreenState extends ConsumerState<ProfileSettingsScreen> {
                 minimumSize: const Size.fromHeight(50),
               ),
             ),
+            const SizedBox(height: 24),
+
+            // 4. データバックアップ・引き継ぎセクション
+            Text(
+              'データバックアップ・引き継ぎ (JSON)',
+              style: theme.textTheme.titleMedium?.copyWith(fontWeight: FontWeight.bold),
+            ),
+            const SizedBox(height: 10),
+            Row(
+              children: [
+                Expanded(
+                  child: OutlinedButton.icon(
+                    onPressed: _exportBackupDialog,
+                    icon: const Icon(Icons.upload_file_outlined, size: 18),
+                    label: const Text('バックアップ書き出し'),
+                    style: OutlinedButton.styleFrom(
+                      minimumSize: const Size.fromHeight(46),
+                    ),
+                  ),
+                ),
+                const SizedBox(width: 10),
+                Expanded(
+                  child: OutlinedButton.icon(
+                    onPressed: _importBackupDialog,
+                    icon: const Icon(Icons.download_for_offline_outlined, size: 18),
+                    label: const Text('データ復元 (読込)'),
+                    style: OutlinedButton.styleFrom(
+                      minimumSize: const Size.fromHeight(46),
+                    ),
+                  ),
+                ),
+              ],
+            ),
             const SizedBox(height: 16),
 
             // 検証用デモデータ（14日分）一括投入ボタン
@@ -420,6 +454,162 @@ class _ProfileSettingsScreenState extends ConsumerState<ProfileSettingsScreen> {
         ),
       ),
     );
+  }
+
+  Future<void> _exportBackupDialog() async {
+    final jsonStr = StorageService.exportBackupJson(
+      profile: ref.read(userProvider),
+      weightLogs: ref.read(weightProvider),
+      meals: ref.read(mealProvider),
+      recipes: ref.read(recipeProvider),
+      foodMasters: ref.read(foodMasterProvider),
+    );
+
+    await Clipboard.setData(ClipboardData(text: jsonStr));
+
+    if (!mounted) return;
+    await showDialog<void>(
+      context: context,
+      builder: (ctx) => AlertDialog(
+        title: const Text('バックアップJSONを生成しました'),
+        content: SizedBox(
+          width: 400,
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            crossAxisAlignment: CrossAxisAlignment.stretch,
+            children: [
+              const Text(
+                '全データ（プロフィール、体重ログ、食事記録、マイレシピ、食材マスタ）のJSONをクリップボードにコピーしました。メモ帳などに貼り付けて保管できます。',
+                style: TextStyle(fontSize: 12),
+              ),
+              const SizedBox(height: 12),
+              Container(
+                height: 180,
+                padding: const EdgeInsets.all(8),
+                decoration: BoxDecoration(
+                  color: Theme.of(ctx).colorScheme.surfaceContainerHighest,
+                  borderRadius: BorderRadius.circular(8),
+                ),
+                child: SingleChildScrollView(
+                  child: SelectableText(
+                    jsonStr,
+                    style: const TextStyle(fontSize: 11, fontFamily: 'monospace'),
+                  ),
+                ),
+              ),
+            ],
+          ),
+        ),
+        actions: [
+          TextButton.icon(
+            onPressed: () async {
+              await Clipboard.setData(ClipboardData(text: jsonStr));
+              if (ctx.mounted) {
+                ScaffoldMessenger.of(ctx).showSnackBar(
+                  const SnackBar(content: Text('クリップボードに再コピーしました')),
+                );
+              }
+            },
+            icon: const Icon(Icons.copy, size: 16),
+            label: const Text('再コピー'),
+          ),
+          FilledButton(
+            onPressed: () => Navigator.of(ctx).pop(),
+            child: const Text('閉じる'),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Future<void> _importBackupDialog() async {
+    final controller = TextEditingController();
+
+    final restored = await showDialog<bool>(
+      context: context,
+      builder: (ctx) => AlertDialog(
+        title: const Text('バックアップJSONから復元'),
+        content: SizedBox(
+          width: 400,
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            crossAxisAlignment: CrossAxisAlignment.stretch,
+            children: [
+              const Text(
+                '保存しておいたバックアップJSON文字列を下に貼り付けて「復元する」を押してください。',
+                style: TextStyle(fontSize: 12),
+              ),
+              const SizedBox(height: 8),
+              Align(
+                alignment: Alignment.centerRight,
+                child: TextButton.icon(
+                  onPressed: () async {
+                    final data = await Clipboard.getData(Clipboard.kTextPlain);
+                    if (data?.text != null) {
+                      controller.text = data!.text!;
+                    }
+                  },
+                  icon: const Icon(Icons.content_paste, size: 16),
+                  label: const Text('クリップボードから貼り付け', style: TextStyle(fontSize: 12)),
+                ),
+              ),
+              TextField(
+                controller: controller,
+                maxLines: 6,
+                decoration: const InputDecoration(
+                  hintText: '{\n  "version": 1,\n  ...\n}',
+                  border: OutlineInputBorder(),
+                ),
+                style: const TextStyle(fontSize: 11, fontFamily: 'monospace'),
+              ),
+            ],
+          ),
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.of(ctx).pop(false),
+            child: const Text('キャンセル'),
+          ),
+          FilledButton(
+            onPressed: () {
+              final raw = controller.text.trim();
+              if (raw.isEmpty) return;
+              try {
+                final bundle = StorageService.parseBackupJson(raw);
+                if (bundle.profile != null) {
+                  ref.read(userProvider.notifier).updateProfile(bundle.profile!);
+                }
+                if (bundle.foodMasters != null) {
+                  ref.read(foodMasterProvider.notifier).replaceAll(bundle.foodMasters!);
+                }
+                if (bundle.recipes != null) {
+                  ref.read(recipeProvider.notifier).replaceAll(bundle.recipes!);
+                }
+                if (bundle.meals != null) {
+                  ref.read(mealProvider.notifier).replaceAll(bundle.meals!);
+                }
+                if (bundle.weightLogs != null) {
+                  ref.read(weightProvider.notifier).replaceAll(bundle.weightLogs!);
+                }
+                Navigator.of(ctx).pop(true);
+              } catch (e) {
+                ScaffoldMessenger.of(ctx).showSnackBar(
+                  const SnackBar(content: Text('JSONの形式が正しくありません')),
+                );
+              }
+            },
+            child: const Text('復元する'),
+          ),
+        ],
+      ),
+    );
+
+    if (restored == true && mounted) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('バックアップデータをすべて復元しました！')),
+      );
+      Navigator.of(context).pop();
+    }
   }
 
   Future<void> _loadDemoData() async {

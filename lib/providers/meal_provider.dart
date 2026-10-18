@@ -1,5 +1,6 @@
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../core/utils/bmr_calculator.dart';
+import '../core/utils/meal_assist_helper.dart';
 import '../models/meal_record.dart';
 import '../services/storage_service.dart';
 import 'user_provider.dart';
@@ -16,6 +17,20 @@ class MealNotifier extends StateNotifier<List<MealRecord>> {
       m.date.month == targetDate.month &&
       m.date.day == targetDate.day
     ).toList();
+  }
+
+  /// 指定した日付・食事区分のレコードを取得（存在しない場合はnull）
+  MealRecord? getMealForDateAndType(DateTime targetDate, MealType type) {
+    for (final m in state) {
+      if (m.date.year == targetDate.year &&
+          m.date.month == targetDate.month &&
+          m.date.day == targetDate.day &&
+          m.type == type &&
+          m.items.isNotEmpty) {
+        return m;
+      }
+    }
+    return null;
   }
 
   /// 食事アイテムの追加
@@ -63,6 +78,40 @@ class MealNotifier extends StateNotifier<List<MealRecord>> {
     StorageService.saveMeals(state);
   }
 
+  /// 記録済みアイテムの分量を変更し、カロリーとPFCを比例再計算して更新
+  void updateMealItemAmount(String recordId, String itemId, double newAmount) {
+    if (newAmount <= 0) return;
+    final recordIndex = state.indexWhere((m) => m.id == recordId);
+    if (recordIndex < 0) return;
+
+    final targetRecord = state[recordIndex];
+    final updatedItems = targetRecord.items.map((item) {
+      if (item.id == itemId) {
+        return MealAssistHelper.scaleMealItem(item, newAmount);
+      }
+      return item;
+    }).toList();
+
+    final newState = [...state];
+    newState[recordIndex] = targetRecord.copyWith(items: updatedItems);
+    state = newState;
+    StorageService.saveMeals(state);
+  }
+
+  /// 指定元の日付（例: 前日）の同じ食事区分からアイテム一式をコピーして追加
+  int copyMealFromDate({
+    required DateTime sourceDate,
+    required DateTime targetDate,
+    required MealType type,
+  }) {
+    final sourceRecord = getMealForDateAndType(sourceDate, type);
+    if (sourceRecord == null || sourceRecord.items.isEmpty) return 0;
+
+    final clonedItems = MealAssistHelper.cloneMealItems(sourceRecord.items);
+    addMealItems(date: targetDate, type: type, items: clonedItems);
+    return clonedItems.length;
+  }
+
   /// アイテムの削除
   void removeMealItem(String recordId, String itemId) {
     final recordIndex = state.indexWhere((m) => m.id == recordId);
@@ -106,10 +155,22 @@ class MealNotifier extends StateNotifier<List<MealRecord>> {
     state = [];
     StorageService.saveMeals(state);
   }
+
+  /// バックアップからの一括復元
+  void replaceAll(List<MealRecord> meals) {
+    state = [...meals];
+    StorageService.saveMeals(state);
+  }
 }
 
 final mealProvider = StateNotifierProvider<MealNotifier, List<MealRecord>>((ref) {
   return MealNotifier();
+});
+
+/// 最近食べたアイテム履歴（重複除去済み・直近12件）プロバイダー
+final recentMealItemsProvider = Provider.autoDispose<List<MealItem>>((ref) {
+  final meals = ref.watch(mealProvider);
+  return MealAssistHelper.extractRecentUniqueItems(meals, limit: 12);
 });
 
 /// 選択中の日付プロバイダー（初期値: 今日）

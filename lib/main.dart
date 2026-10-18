@@ -1,5 +1,6 @@
 import 'dart:ui';
 import 'package:flutter/material.dart';
+import 'package:flutter_localizations/flutter_localizations.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:intl/date_symbol_data_local.dart';
 import 'core/theme/app_theme.dart';
@@ -67,14 +68,14 @@ class AppScrollBehavior extends MaterialScrollBehavior {
   };
 }
 
-class PfcTrackerApp extends StatefulWidget {
+class PfcTrackerApp extends ConsumerStatefulWidget {
   const PfcTrackerApp({super.key});
 
   @override
-  State<PfcTrackerApp> createState() => _PfcTrackerAppState();
+  ConsumerState<PfcTrackerApp> createState() => _PfcTrackerAppState();
 }
 
-class _PfcTrackerAppState extends State<PfcTrackerApp> {
+class _PfcTrackerAppState extends ConsumerState<PfcTrackerApp> {
   @override
   void initState() {
     super.initState();
@@ -89,6 +90,15 @@ class _PfcTrackerAppState extends State<PfcTrackerApp> {
     return MaterialApp(
       title: 'PFC Health Tracker',
       debugShowCheckedModeBanner: false,
+      locale: const Locale('ja', 'JP'),
+      supportedLocales: const [
+        Locale('ja', 'JP'),
+      ],
+      localizationsDelegates: const [
+        GlobalMaterialLocalizations.delegate,
+        GlobalWidgetsLocalizations.delegate,
+        GlobalCupertinoLocalizations.delegate,
+      ],
       scrollBehavior: const AppScrollBehavior(),
       theme: AppTheme.lightTheme,
       builder: (context, child) {

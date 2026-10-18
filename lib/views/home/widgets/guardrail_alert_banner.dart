@@ -35,7 +35,7 @@ class GuardrailAlertBanner extends ConsumerWidget {
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
                   Text(
-                    '安全ガードレール: 目標カロリーがBMR下限に達しています',
+                    'カロリー制限しすぎ注意（基礎代謝を下回っています）',
                     style: TextStyle(
                       fontWeight: FontWeight.bold,
                       fontSize: 12,
@@ -44,7 +44,7 @@ class GuardrailAlertBanner extends ConsumerWidget {
                   ),
                   const SizedBox(height: 2),
                   Text(
-                    '無理な食事制限を防止するため、達成予定日の延長を推奨します。',
+                    '健康的な代謝を維持するため、目標期限を少し延長して摂取枠を増やすことをおすすめします。',
                     style: TextStyle(
                       fontSize: 11,
                       color: theme.colorScheme.onErrorContainer.withOpacity(0.85),
@@ -68,7 +68,7 @@ class GuardrailAlertBanner extends ConsumerWidget {
       );
     }
 
-    // 2. 停滞期（プラトー）検出
+    // 2. 停滞期検出
     if (guardrails.isPlateauDetected) {
       return Container(
         margin: const EdgeInsets.only(bottom: 12),
@@ -87,7 +87,7 @@ class GuardrailAlertBanner extends ConsumerWidget {
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
                   Text(
-                    '体重の停滞期（プラトー）の可能性があります',
+                    '体重の停滞期に入っている可能性があります',
                     style: TextStyle(
                       fontWeight: FontWeight.bold,
                       fontSize: 12,
@@ -96,7 +96,7 @@ class GuardrailAlertBanner extends ConsumerWidget {
                   ),
                   const SizedBox(height: 2),
                   Text(
-                    '水分貯留か活動量（NEAT）低下かをセルフチェックしてみましょう。',
+                    '一時的なむくみか、日常の消費エネルギー低下かをセルフチェックしてみましょう。',
                     style: TextStyle(
                       fontSize: 11,
                       color: theme.colorScheme.onSurfaceVariant,

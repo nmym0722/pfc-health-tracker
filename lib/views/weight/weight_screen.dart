@@ -111,7 +111,7 @@ class _WeightScreenState extends ConsumerState<WeightScreen> {
                       mainAxisAlignment: MainAxisAlignment.spaceAround,
                       children: [
                         _StatItem(
-                          label: '7日EMAトレンド',
+                          label: '実質体重 (平均トレンド)',
                           value: latestEma != null
                               ? '${latestEma.emaWeight.toStringAsFixed(1)} kg'
                               : '${userProfile.currentWeight} kg',
@@ -127,7 +127,7 @@ class _WeightScreenState extends ConsumerState<WeightScreen> {
                         ),
                         Container(height: 40, width: 1, color: theme.colorScheme.outlineVariant),
                         _StatItem(
-                          label: '水分ノイズ推定',
+                          label: '一時的な水分変動',
                           value: waterNoise != null
                               ? '${waterNoise >= 0 ? '+' : ''}${waterNoise.toStringAsFixed(1)} kg'
                               : '±0.0 kg',
@@ -150,7 +150,7 @@ class _WeightScreenState extends ConsumerState<WeightScreen> {
                           const SizedBox(width: 10),
                           Expanded(
                             child: Text(
-                              '日々の水分ブレ（塩分・炭水化物による±1〜2kgの変動）を7日EMAで自動除去し、身体の本質的な脂肪燃焼トレンドを追跡しています。',
+                              '日々の水分ブレ（塩分や炭水化物による一時的な増減）をならし、身体の本当の脂肪燃焼ペースを追跡しています。',
                               style: theme.textTheme.bodySmall?.copyWith(
                                 color: theme.colorScheme.onPrimaryContainer,
                               ),
@@ -236,6 +236,59 @@ class _WeightScreenState extends ConsumerState<WeightScreen> {
             ),
             const SizedBox(height: 10),
 
+            // 前回体重ベースの ±0.1kg / ±0.5kg クイックステッパー
+            Builder(
+              builder: (context) {
+                final lastWeight = sortedLogsDesc.isNotEmpty
+                    ? sortedLogsDesc.first.weight
+                    : userProfile.currentWeight;
+
+                void stepWeight(double delta) {
+                  final base = double.tryParse(_weightController.text) ?? lastWeight;
+                  final next = ((base + delta) * 10).round() / 10.0;
+                  if (next > 20.0 && next < 250.0) {
+                    setState(() {
+                      _weightController.text = next.toStringAsFixed(1);
+                    });
+                  }
+                }
+
+                return SingleChildScrollView(
+                  scrollDirection: Axis.horizontal,
+                  child: Row(
+                    children: [
+                      ActionChip(
+                        avatar: const Icon(Icons.history, size: 15),
+                        label: Text(
+                          '前回値 (${lastWeight.toStringAsFixed(1)}kg)',
+                          style: const TextStyle(fontSize: 12, fontWeight: FontWeight.w600),
+                        ),
+                        visualDensity: VisualDensity.compact,
+                        onPressed: () {
+                          setState(() {
+                            _weightController.text = lastWeight.toStringAsFixed(1);
+                          });
+                        },
+                      ),
+                      const SizedBox(width: 6),
+                      ...[-0.5, -0.1, 0.1, 0.5].map((delta) {
+                        final label = '${delta > 0 ? '+' : ''}${delta.toStringAsFixed(1)}kg';
+                        return Padding(
+                          padding: const EdgeInsets.only(right: 6.0),
+                          child: ActionChip(
+                            label: Text(label, style: const TextStyle(fontSize: 12)),
+                            visualDensity: VisualDensity.compact,
+                            onPressed: () => stepWeight(delta),
+                          ),
+                        );
+                      }),
+                    ],
+                  ),
+                );
+              },
+            ),
+            const SizedBox(height: 10),
+
             // ハイカーボ/外食（チートデイ）トグル
             Container(
               decoration: BoxDecoration(
@@ -253,8 +306,8 @@ class _WeightScreenState extends ConsumerState<WeightScreen> {
                   Icons.restaurant_outlined,
                   color: _isCheatDay ? theme.colorScheme.tertiary : theme.colorScheme.onSurfaceVariant,
                 ),
-                title: const Text('昨日はハイカーボ / 外食でしたか？', style: TextStyle(fontSize: 13, fontWeight: FontWeight.bold)),
-                subtitle: const Text('翌日の体重急増（水分貯留）をEMA計算で自動減衰（20%重み）します', style: TextStyle(fontSize: 11)),
+                title: const Text('前日に食べ過ぎ・塩分多めの食事をした', style: TextStyle(fontSize: 13, fontWeight: FontWeight.bold)),
+                subtitle: const Text('むくみによる一時的な体重増加として計算します', style: TextStyle(fontSize: 11)),
                 dense: true,
               ),
             ),
@@ -449,7 +502,7 @@ class _WeightScreenState extends ConsumerState<WeightScreen> {
     });
 
     ScaffoldMessenger.of(context).showSnackBar(
-      const SnackBar(content: Text('体重を記録し、EMA推移グラフと目標カロリーを更新しました。')),
+      const SnackBar(content: Text('体重を記録し、体重推移と目標カロリーを更新しました。')),
     );
   }
 
@@ -521,8 +574,8 @@ class _WeightScreenState extends ConsumerState<WeightScreen> {
                           editCheatDay = val;
                         });
                       },
-                      title: const Text('ハイカーボ / 外食日', style: TextStyle(fontSize: 13, fontWeight: FontWeight.bold)),
-                      subtitle: const Text('翌日データにEMA減衰を適用', style: TextStyle(fontSize: 11)),
+                      title: const Text('食べ過ぎ・外食日', style: TextStyle(fontSize: 13, fontWeight: FontWeight.bold)),
+                      subtitle: const Text('翌日のむくみによる一時的な体重増加として計算', style: TextStyle(fontSize: 11)),
                     ),
                   ],
                 ),

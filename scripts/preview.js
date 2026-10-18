@@ -11,6 +11,7 @@ console.log('[Preview] 2/2: Starting Cloudflare Tunnel (pointing to 127.0.0.1:80
 const npxCmd = process.platform === 'win32' ? 'npx.cmd' : 'npx';
 const tunnel = spawn(npxCmd, ['--yes', 'cloudflared', 'tunnel', '--url', 'http://127.0.0.1:8085'], {
   stdio: ['ignore', 'pipe', 'pipe'],
+  shell: true,
 });
 
 let urlFound = false;
