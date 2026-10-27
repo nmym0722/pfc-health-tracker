@@ -87,7 +87,8 @@ class _MealDisplayGroup {
   final String? recipeName;
   final List<MealItem> items;
 
-  bool get isRecipe => recipeName != null && items.isNotEmpty;
+  /// 食材が2品以上ある組み合わせレシピの場合のみトグルグループとして扱う
+  bool get isRecipe => recipeName != null && items.length > 1;
 
   _MealDisplayGroup({required this.recipeName, required this.items});
 }

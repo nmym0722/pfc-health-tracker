@@ -24,6 +24,7 @@ class _ProfileSettingsScreenState extends ConsumerState<ProfileSettingsScreen> {
   late TextEditingController _heightController;
   late TextEditingController _currentWeightController;
   late TextEditingController _targetWeightController;
+  final TextEditingController _geminiApiKeyController = TextEditingController();
 
   late Gender _selectedGender;
   late ActivityLevel _selectedActivityLevel;
@@ -44,6 +45,16 @@ class _ProfileSettingsScreenState extends ConsumerState<ProfileSettingsScreen> {
     _selectedActivityLevel = profile.activityLevel;
     _selectedGoalType = profile.goalType;
     _selectedTargetDate = profile.targetDate;
+    _loadSavedGeminiKey();
+  }
+
+  Future<void> _loadSavedGeminiKey() async {
+    final key = await StorageService.loadGeminiApiKey();
+    if (key != null && mounted) {
+      setState(() {
+        _geminiApiKeyController.text = key;
+      });
+    }
   }
 
   @override
@@ -53,6 +64,7 @@ class _ProfileSettingsScreenState extends ConsumerState<ProfileSettingsScreen> {
     _heightController.dispose();
     _currentWeightController.dispose();
     _targetWeightController.dispose();
+    _geminiApiKeyController.dispose();
     super.dispose();
   }
 
@@ -394,6 +406,35 @@ class _ProfileSettingsScreenState extends ConsumerState<ProfileSettingsScreen> {
             ),
             const SizedBox(height: 24),
 
+            // AI写真解析 (Gemini 2.5 Flash) APIキー設定セクション
+            Text(
+              'AI写真解析設定 (Gemini 2.5 Flash)',
+              style: theme.textTheme.titleMedium?.copyWith(fontWeight: FontWeight.bold),
+            ),
+            const SizedBox(height: 8),
+            TextField(
+              controller: _geminiApiKeyController,
+              decoration: InputDecoration(
+                labelText: 'Gemini APIキー (Google AI Studio)',
+                hintText: 'AIzaSy...',
+                helperText: 'aistudio.google.com/apikey で無料発行したキーを入力すると写真解析が有効になります',
+                border: const OutlineInputBorder(),
+                suffixIcon: IconButton(
+                  icon: const Icon(Icons.save_outlined),
+                  tooltip: 'APIキーを保存',
+                  onPressed: () async {
+                    await StorageService.saveGeminiApiKey(_geminiApiKeyController.text);
+                    if (context.mounted) {
+                      ScaffoldMessenger.of(context).showSnackBar(
+                        const SnackBar(content: Text('Gemini APIキーを保存しました')),
+                      );
+                    }
+                  },
+                ),
+              ),
+            ),
+            const SizedBox(height: 24),
+
             // 4. データバックアップ・引き継ぎセクション
             Text(
               'データバックアップ・引き継ぎ (JSON)',
@@ -697,6 +738,9 @@ class _ProfileSettingsScreenState extends ConsumerState<ProfileSettingsScreen> {
     );
 
     ref.read(userProvider.notifier).updateProfile(updatedProfile);
+    if (_geminiApiKeyController.text.trim().isNotEmpty) {
+      StorageService.saveGeminiApiKey(_geminiApiKeyController.text);
+    }
 
     ScaffoldMessenger.of(context).showSnackBar(
       const SnackBar(

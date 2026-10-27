@@ -146,6 +146,17 @@ class RecipeNotifier extends StateNotifier<List<Recipe>> {
     StorageService.saveRecipes(state);
   }
 
+  void reorder(int oldIndex, int newIndex) {
+    if (oldIndex < newIndex) {
+      newIndex -= 1;
+    }
+    final items = List<Recipe>.from(state);
+    final item = items.removeAt(oldIndex);
+    items.insert(newIndex, item);
+    state = items;
+    StorageService.saveRecipes(state);
+  }
+
   void clearAll() {
     state = [];
     StorageService.saveRecipes(state);
@@ -159,4 +170,46 @@ class RecipeNotifier extends StateNotifier<List<Recipe>> {
 
 final recipeProvider = StateNotifierProvider<RecipeNotifier, List<Recipe>>((ref) {
   return RecipeNotifier();
+});
+
+/// マイリストのカスタムグループ管理Notifier
+class RecipeGroupsNotifier extends StateNotifier<List<String>> {
+  static const defaultGroups = ['食材', '自炊', '外食'];
+
+  RecipeGroupsNotifier({List<String>? initial}) : super(initial ?? defaultGroups) {
+    _loadGroups();
+  }
+
+  Future<void> _loadGroups() async {
+    final loaded = await StorageService.loadCustomRecipeGroups();
+    if (loaded != null && loaded.isNotEmpty) {
+      final combined = {...defaultGroups, ...loaded}.toList();
+      state = combined;
+    }
+  }
+
+  Future<void> addGroup(String groupName) async {
+    final trimmed = groupName.trim();
+    if (trimmed.isEmpty || state.contains(trimmed)) return;
+    state = [...state, trimmed];
+    // デフォルト以外のユーザーグループを保存
+    final customOnly = state.where((g) => !defaultGroups.contains(g)).toList();
+    await StorageService.saveCustomRecipeGroups(customOnly);
+  }
+
+  Future<void> removeGroup(String groupName) async {
+    if (defaultGroups.contains(groupName)) return; // デフォルトは削除不可
+    state = state.where((g) => g != groupName).toList();
+    final customOnly = state.where((g) => !defaultGroups.contains(g)).toList();
+    await StorageService.saveCustomRecipeGroups(customOnly);
+  }
+}
+
+final recipeGroupsProvider = StateNotifierProvider<RecipeGroupsNotifier, List<String>>((ref) {
+  return RecipeGroupsNotifier();
+});
+
+/// マイリストのソート種別Provider
+final recipeSortTypeProvider = StateProvider<RecipeSortType>((ref) {
+  return RecipeSortType.custom;
 });

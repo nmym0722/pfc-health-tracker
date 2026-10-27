@@ -182,12 +182,18 @@ void main() {
     await tester.tap(find.byIcon(Icons.add_circle_outline));
     await tester.pumpAndSettle();
 
-    // 2. 初期シードされているマイレシピ「蒸し鶏とブロッコリーの筋肉ボウル」の追加アイコンをタップ
+    // 2. 初期シードされているマイレシピ「蒸し鶏とブロッコリーの筋肉ボウル」の追加アイコンをタップして分量指定シートを開く
     final addRecipeButton = find.byIcon(Icons.add_circle).first;
     expect(addRecipeButton, findsOneWidget);
     await tester.ensureVisible(addRecipeButton);
     await tester.pumpAndSettle();
     await tester.tap(addRecipeButton);
+    await tester.pumpAndSettle();
+
+    // 分量指定モーダルシートが開き、「この分量で追加」ボタンが表示されることを確認してタップ
+    final confirmPortionButton = find.textContaining('にこの分量で追加');
+    expect(confirmPortionButton, findsOneWidget);
+    await tester.tap(confirmPortionButton);
     await tester.pumpAndSettle();
 
     // 3. ホーム画面に遷移していることを確認

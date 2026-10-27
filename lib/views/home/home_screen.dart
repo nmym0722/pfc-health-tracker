@@ -17,6 +17,7 @@ import 'widgets/remaining_pfc_suggestion_card.dart';
 import 'widgets/quick_weight_entry_bar.dart';
 import '../meal_input/meal_input_screen.dart';
 import '../profile/profile_settings_screen.dart';
+import '../common/recipe_group_selector.dart';
 
 class HomeScreen extends ConsumerWidget {
   const HomeScreen({super.key});
@@ -333,6 +334,7 @@ class HomeScreen extends ConsumerWidget {
     );
     final descController = TextEditingController();
     MyListCategory category = MyListCategory.homeCooked;
+    String group = '自炊';
 
     showDialog(
       context: context,
@@ -362,17 +364,18 @@ class HomeScreen extends ConsumerWidget {
                       ),
                     ),
                     const SizedBox(height: 12),
-                    SegmentedButton<MyListCategory>(
-                      segments: MyListCategory.values.map((cat) {
-                        return ButtonSegment<MyListCategory>(
-                          value: cat,
-                          label: Text(cat.shortLabel, style: const TextStyle(fontSize: 12)),
-                        );
-                      }).toList(),
-                      selected: {category},
-                      onSelectionChanged: (sel) {
+                    RecipeGroupSelector(
+                      selectedGroup: group,
+                      onGroupChanged: (g) {
                         setDialogState(() {
-                          category = sel.first;
+                          group = g;
+                          if (g == '食材') {
+                            category = MyListCategory.ingredient;
+                          } else if (g == '外食') {
+                            category = MyListCategory.diningOut;
+                          } else {
+                            category = MyListCategory.homeCooked;
+                          }
                         });
                       },
                     ),
@@ -431,6 +434,7 @@ class HomeScreen extends ConsumerWidget {
                           : descController.text.trim(),
                       servings: 1,
                       category: category,
+                      customGroup: group,
                       ingredients: ingredients,
                       createdAt: DateTime.now(),
                     );

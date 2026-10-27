@@ -42,14 +42,10 @@ class MealItem {
     required this.carbs,
   });
 
-  /// 関連するレシピ名を取得（recipeNameフィールド優先、未設定時はnameの末尾括弧から自動抽出）
+  /// 関連するレシピ名を取得（recipeNameフィールドが設定されている場合のみ）
   String? get associatedRecipeName {
     if (recipeName != null && recipeName!.trim().isNotEmpty) {
       return recipeName!.trim();
-    }
-    final match = RegExp(r'[\s]*[\(（]([^()（）]+)[\)）]$').firstMatch(name);
-    if (match != null) {
-      return match.group(1)?.trim();
     }
     return null;
   }

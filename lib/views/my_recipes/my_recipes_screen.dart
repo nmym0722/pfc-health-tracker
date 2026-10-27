@@ -3,6 +3,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../../models/recipe.dart';
 import '../../models/meal_record.dart';
 import '../../models/food_master.dart';
+import '../../core/utils/amount_parser.dart';
 import '../../providers/food_master_provider.dart';
 import '../../providers/meal_provider.dart';
 import '../common/food_edit_dialog.dart';
@@ -20,6 +21,7 @@ class _MyRecipesScreenState extends ConsumerState<MyRecipesScreen> {
   String _libSearchQuery = '';
   String _libCategory = 'すべて';
   bool _isCategoryExpanded = false;
+  String? _selectedRecipeGroup;
 
   static const _categories = [
     'すべて',
@@ -91,196 +93,391 @@ class _MyRecipesScreenState extends ConsumerState<MyRecipesScreen> {
     ThemeData theme,
     List<Recipe> recipes,
   ) {
-    if (recipes.isEmpty) {
-      return Center(
-        child: Column(
-          mainAxisAlignment: MainAxisAlignment.center,
-          children: [
-            Icon(Icons.menu_book, size: 56, color: theme.colorScheme.onSurfaceVariant),
-            const SizedBox(height: 16),
-            Text(
-              'マイレシピはまだありません',
-              style: theme.textTheme.titleMedium?.copyWith(
-                color: theme.colorScheme.onSurfaceVariant,
-              ),
-            ),
-            const SizedBox(height: 8),
-            Text(
-              '「食事入力」タブの「食材合算」から\n複数の食材を組み合わせてマイレシピとして保存できます。',
-              textAlign: TextAlign.center,
-              style: theme.textTheme.bodyMedium?.copyWith(
-                color: theme.colorScheme.onSurfaceVariant,
-              ),
-            ),
-          ],
-        ),
-      );
+    final allGroups = ref.watch(recipeGroupsProvider);
+    final sortType = ref.watch(recipeSortTypeProvider);
+
+    // グループによる絞り込み
+    final filteredRecipes = _selectedRecipeGroup == null
+        ? List<Recipe>.from(recipes)
+        : recipes.where((r) => r.effectiveGroup == _selectedRecipeGroup).toList();
+
+    // ソート順の適用
+    final sortedRecipes = List<Recipe>.from(filteredRecipes);
+    switch (sortType) {
+      case RecipeSortType.custom:
+        break;
+      case RecipeSortType.nameAsc:
+        sortedRecipes.sort((a, b) => a.name.compareTo(b.name));
+        break;
+      case RecipeSortType.createdAtDesc:
+        sortedRecipes.sort((a, b) => b.createdAt.compareTo(a.createdAt));
+        break;
+      case RecipeSortType.createdAtAsc:
+        sortedRecipes.sort((a, b) => a.createdAt.compareTo(b.createdAt));
+        break;
+      case RecipeSortType.caloriesDesc:
+        sortedRecipes.sort((a, b) => b.caloriesPerServing.compareTo(a.caloriesPerServing));
+        break;
+      case RecipeSortType.proteinDesc:
+        sortedRecipes.sort((a, b) => b.proteinPerServing.compareTo(a.proteinPerServing));
+        break;
     }
 
-    return ListView.builder(
-      padding: const EdgeInsets.all(16.0),
-      itemCount: recipes.length,
-      itemBuilder: (context, index) {
-        final recipe = recipes[index];
+    final isCustomReorderable = sortType == RecipeSortType.custom && _selectedRecipeGroup == null;
 
-        return Card(
-          margin: const EdgeInsets.only(bottom: 16),
-          child: Padding(
-            padding: const EdgeInsets.all(16.0),
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Row(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    CircleAvatar(
-                      backgroundColor: theme.colorScheme.primaryContainer,
-                      child: Icon(Icons.soup_kitchen, color: theme.colorScheme.onPrimaryContainer),
-                    ),
-                    const SizedBox(width: 12),
-                    Expanded(
-                      child: Column(
-                        crossAxisAlignment: CrossAxisAlignment.start,
-                        children: [
-                          Text(
-                            recipe.name,
-                            style: theme.textTheme.titleMedium?.copyWith(
-                              fontWeight: FontWeight.bold,
-                            ),
-                          ),
-                          if (recipe.description != null && recipe.description!.isNotEmpty) ...[
-                            const SizedBox(height: 4),
-                            Text(
-                              recipe.description!,
-                              style: theme.textTheme.bodySmall?.copyWith(
-                                color: theme.colorScheme.onSurfaceVariant,
-                              ),
-                            ),
-                          ],
-                        ],
+    return Column(
+      children: [
+        // グループ絞り込みチップ & 並べ替えメニュー
+        Padding(
+          padding: const EdgeInsets.fromLTRB(16.0, 10.0, 16.0, 4.0),
+          child: Row(
+            children: [
+              Expanded(
+                child: SingleChildScrollView(
+                  scrollDirection: Axis.horizontal,
+                  child: Row(
+                    children: [
+                      ChoiceChip(
+                        label: Text('すべて (${recipes.length})'),
+                        selected: _selectedRecipeGroup == null,
+                        onSelected: (selected) {
+                          if (selected) {
+                            setState(() => _selectedRecipeGroup = null);
+                          }
+                        },
                       ),
-                    ),
-                    IconButton(
-                      icon: const Icon(Icons.edit_outlined, size: 20),
-                      tooltip: 'マイレシピを編集',
-                      color: theme.colorScheme.primary,
-                      onPressed: () async {
-                        final edited = await RecipeEditDialog.show(context, recipe: recipe);
-                        if (edited != null && context.mounted) {
-                          ScaffoldMessenger.of(context).showSnackBar(
-                            SnackBar(content: Text('「${edited.name}」を更新しました')),
-                          );
-                        }
-                      },
-                    ),
-                    IconButton(
-                      icon: const Icon(Icons.delete_outline, size: 20),
-                      color: theme.colorScheme.error,
-                      onPressed: () => _confirmDeleteRecipe(context, recipe),
+                      const SizedBox(width: 8),
+                      ...allGroups.map((group) {
+                        final count = recipes.where((r) => r.effectiveGroup == group).length;
+                        return Padding(
+                          padding: const EdgeInsets.only(right: 8.0),
+                          child: ChoiceChip(
+                            label: Text('$group ($count)'),
+                            selected: _selectedRecipeGroup == group,
+                            onSelected: (selected) {
+                              setState(() {
+                                _selectedRecipeGroup = selected ? group : null;
+                              });
+                            },
+                          ),
+                        );
+                      }),
+                    ],
+                  ),
+                ),
+              ),
+              const SizedBox(width: 6),
+              PopupMenuButton<RecipeSortType>(
+                icon: Row(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    Icon(Icons.swap_vert, size: 20, color: theme.colorScheme.primary),
+                    const SizedBox(width: 2),
+                    Text(
+                      sortType.label,
+                      style: TextStyle(
+                        fontSize: 11,
+                        fontWeight: FontWeight.bold,
+                        color: theme.colorScheme.primary,
+                      ),
                     ),
                   ],
                 ),
-                const SizedBox(height: 12),
-                Container(
-                  padding: const EdgeInsets.all(12),
-                  decoration: BoxDecoration(
-                    color: theme.colorScheme.surfaceContainerHighest.withOpacity(0.5),
-                    borderRadius: BorderRadius.circular(8),
-                  ),
-                  child: Row(
-                    mainAxisAlignment: MainAxisAlignment.spaceAround,
+                tooltip: '並べ替え順を変更',
+                padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 4),
+                shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+                onSelected: (newSort) {
+                  ref.read(recipeSortTypeProvider.notifier).state = newSort;
+                },
+                itemBuilder: (context) => RecipeSortType.values.map((st) {
+                  final isSelected = st == sortType;
+                  return PopupMenuItem(
+                    value: st,
+                    child: Row(
+                      children: [
+                        Icon(
+                          isSelected ? Icons.check_circle : Icons.radio_button_unchecked,
+                          size: 18,
+                          color: isSelected ? theme.colorScheme.primary : theme.colorScheme.outline,
+                        ),
+                        const SizedBox(width: 10),
+                        Text(
+                          st.label,
+                          style: TextStyle(
+                            fontWeight: isSelected ? FontWeight.bold : FontWeight.normal,
+                          ),
+                        ),
+                      ],
+                    ),
+                  );
+                }).toList(),
+              ),
+            ],
+          ),
+        ),
+        const Divider(height: 1),
+
+        Expanded(
+          child: sortedRecipes.isEmpty
+              ? Center(
+                  child: Column(
+                    mainAxisAlignment: MainAxisAlignment.center,
                     children: [
-                      Expanded(
-                        child: Column(
-                          children: [
-                            Text('1人前カロリー', style: theme.textTheme.bodySmall?.copyWith(fontSize: 10)),
-                            const SizedBox(height: 2),
-                            Text(
-                              '${recipe.caloriesPerServing.round()} kcal',
-                              style: theme.textTheme.titleMedium?.copyWith(
-                                fontWeight: FontWeight.bold,
-                                fontSize: 13,
-                                color: theme.colorScheme.primary,
-                              ),
-                            ),
-                          ],
+                      Icon(Icons.menu_book, size: 56, color: theme.colorScheme.onSurfaceVariant),
+                      const SizedBox(height: 16),
+                      Text(
+                        _selectedRecipeGroup == null
+                            ? 'マイレシピはまだありません'
+                            : '「$_selectedRecipeGroup」のマイレシピはありません',
+                        style: theme.textTheme.titleMedium?.copyWith(
+                          color: theme.colorScheme.onSurfaceVariant,
                         ),
                       ),
-                      Expanded(
-                        child: Column(
-                          children: [
-                            Text('P: タンパク質', style: theme.textTheme.bodySmall?.copyWith(fontSize: 10)),
-                            const SizedBox(height: 2),
-                            Text(
-                              '${recipe.proteinPerServing.toStringAsFixed(1)} g',
-                              style: TextStyle(fontWeight: FontWeight.bold, fontSize: 13, color: theme.colorScheme.primary),
-                            ),
-                          ],
-                        ),
-                      ),
-                      Expanded(
-                        child: Column(
-                          children: [
-                            Text('F: 脂質', style: theme.textTheme.bodySmall?.copyWith(fontSize: 10)),
-                            const SizedBox(height: 2),
-                            Text(
-                              '${recipe.fatPerServing.toStringAsFixed(1)} g',
-                              style: TextStyle(fontWeight: FontWeight.bold, fontSize: 13, color: theme.colorScheme.tertiary),
-                            ),
-                          ],
-                        ),
-                      ),
-                      Expanded(
-                        child: Column(
-                          children: [
-                            Text('C: 炭水化物', style: theme.textTheme.bodySmall?.copyWith(fontSize: 10)),
-                            const SizedBox(height: 2),
-                            Text(
-                              '${recipe.carbsPerServing.toStringAsFixed(1)} g',
-                              style: TextStyle(fontWeight: FontWeight.bold, fontSize: 13, color: theme.colorScheme.secondary),
-                            ),
-                          ],
+                      const SizedBox(height: 8),
+                      Text(
+                        '「食事入力」タブの「食材合算」や「直接入力」から\nマイレシピとして保存できます。',
+                        textAlign: TextAlign.center,
+                        style: theme.textTheme.bodyMedium?.copyWith(
+                          color: theme.colorScheme.onSurfaceVariant,
                         ),
                       ),
                     ],
                   ),
-                ),
-                const SizedBox(height: 12),
-                Text(
-                  '使用食材 (${recipe.ingredients.length}品 / ${recipe.servings}人前分量):',
-                  style: theme.textTheme.labelMedium?.copyWith(
-                    color: theme.colorScheme.onSurfaceVariant,
+                )
+              : (isCustomReorderable
+                  ? ReorderableListView.builder(
+                      padding: const EdgeInsets.all(16.0),
+                      itemCount: sortedRecipes.length,
+                      onReorder: (oldIndex, newIndex) {
+                        ref.read(recipeProvider.notifier).reorder(oldIndex, newIndex);
+                      },
+                      itemBuilder: (context, index) {
+                        final recipe = sortedRecipes[index];
+                        return _buildRecipeCard(
+                          context,
+                          theme,
+                          recipe,
+                          key: ValueKey(recipe.id),
+                          showDragHandle: true,
+                          index: index,
+                        );
+                      },
+                    )
+                  : ListView.builder(
+                      padding: const EdgeInsets.all(16.0),
+                      itemCount: sortedRecipes.length,
+                      itemBuilder: (context, index) {
+                        final recipe = sortedRecipes[index];
+                        return _buildRecipeCard(
+                          context,
+                          theme,
+                          recipe,
+                          key: ValueKey(recipe.id),
+                          showDragHandle: false,
+                          index: index,
+                        );
+                      },
+                    )),
+        ),
+      ],
+    );
+  }
+
+  /// マイレシピ一覧詳細カード
+  Widget _buildRecipeCard(
+    BuildContext context,
+    ThemeData theme,
+    Recipe recipe, {
+    required Key key,
+    required bool showDragHandle,
+    required int index,
+  }) {
+    return Card(
+      key: key,
+      margin: const EdgeInsets.only(bottom: 16),
+      child: Padding(
+        padding: const EdgeInsets.all(16.0),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Row(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                if (showDragHandle)
+                  ReorderableDragStartListener(
+                    index: index,
+                    child: Padding(
+                      padding: const EdgeInsets.only(right: 8.0, top: 8.0),
+                      child: Icon(Icons.drag_handle, color: theme.colorScheme.outlineVariant),
+                    ),
                   ),
+                CircleAvatar(
+                  backgroundColor: theme.colorScheme.primaryContainer,
+                  child: Icon(Icons.soup_kitchen, color: theme.colorScheme.onPrimaryContainer),
                 ),
-                const SizedBox(height: 6),
-                Wrap(
-                  spacing: 6,
-                  runSpacing: 4,
-                  children: recipe.ingredients.map((ing) {
-                    return Chip(
-                      label: Text(
-                        '${ing.food.name} ${ing.amount.round()}${ing.food.unitLabel}',
-                        style: const TextStyle(fontSize: 11),
+                const SizedBox(width: 12),
+                Expanded(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Row(
+                        children: [
+                          Expanded(
+                            child: Text(
+                              recipe.name,
+                              style: theme.textTheme.titleMedium?.copyWith(
+                                fontWeight: FontWeight.bold,
+                              ),
+                            ),
+                          ),
+                          Container(
+                            padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
+                            decoration: BoxDecoration(
+                              color: theme.colorScheme.surfaceContainerHighest,
+                              borderRadius: BorderRadius.circular(6),
+                            ),
+                            child: Text(
+                              recipe.effectiveGroup,
+                              style: TextStyle(
+                                fontSize: 11,
+                                fontWeight: FontWeight.bold,
+                                color: theme.colorScheme.primary,
+                              ),
+                            ),
+                          ),
+                        ],
                       ),
-                      visualDensity: VisualDensity.compact,
-                      materialTapTargetSize: MaterialTapTargetSize.shrinkWrap,
-                    );
-                  }).toList(),
-                ),
-                const SizedBox(height: 16),
-                FilledButton.icon(
-                  onPressed: () => _showAddMealBottomSheet(context, recipe),
-                  icon: const Icon(Icons.add, size: 18),
-                  label: const Text('今日の食事に記録する'),
-                  style: FilledButton.styleFrom(
-                    minimumSize: const Size.fromHeight(40),
+                      if (recipe.description != null && recipe.description!.isNotEmpty) ...[
+                        const SizedBox(height: 4),
+                        Text(
+                          recipe.description!,
+                          style: theme.textTheme.bodySmall?.copyWith(
+                            color: theme.colorScheme.onSurfaceVariant,
+                          ),
+                        ),
+                      ],
+                    ],
                   ),
+                ),
+                IconButton(
+                  icon: const Icon(Icons.edit_outlined, size: 20),
+                  tooltip: 'マイレシピを編集',
+                  color: theme.colorScheme.primary,
+                  onPressed: () async {
+                    final edited = await RecipeEditDialog.show(context, recipe: recipe);
+                    if (edited != null && context.mounted) {
+                      ScaffoldMessenger.of(context).showSnackBar(
+                        SnackBar(content: Text('「${edited.name}」を更新しました')),
+                      );
+                    }
+                  },
+                ),
+                IconButton(
+                  icon: const Icon(Icons.delete_outline, size: 20),
+                  color: theme.colorScheme.error,
+                  onPressed: () => _confirmDeleteRecipe(context, recipe),
                 ),
               ],
             ),
-          ),
-        );
-      },
+            const SizedBox(height: 12),
+            Container(
+              padding: const EdgeInsets.all(12),
+              decoration: BoxDecoration(
+                color: theme.colorScheme.surfaceContainerHighest.withOpacity(0.5),
+                borderRadius: BorderRadius.circular(8),
+              ),
+              child: Row(
+                mainAxisAlignment: MainAxisAlignment.spaceAround,
+                children: [
+                  Expanded(
+                    child: Column(
+                      children: [
+                        Text('1人前カロリー', style: theme.textTheme.bodySmall?.copyWith(fontSize: 10)),
+                        const SizedBox(height: 2),
+                        Text(
+                          '${recipe.caloriesPerServing.round()} kcal',
+                          style: theme.textTheme.titleMedium?.copyWith(
+                            fontWeight: FontWeight.bold,
+                            fontSize: 13,
+                            color: theme.colorScheme.primary,
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
+                  Expanded(
+                    child: Column(
+                      children: [
+                        Text('P: タンパク質', style: theme.textTheme.bodySmall?.copyWith(fontSize: 10)),
+                        const SizedBox(height: 2),
+                        Text(
+                          '${recipe.proteinPerServing.toStringAsFixed(1)} g',
+                          style: TextStyle(fontWeight: FontWeight.bold, fontSize: 13, color: theme.colorScheme.primary),
+                        ),
+                      ],
+                    ),
+                  ),
+                  Expanded(
+                    child: Column(
+                      children: [
+                        Text('F: 脂質', style: theme.textTheme.bodySmall?.copyWith(fontSize: 10)),
+                        const SizedBox(height: 2),
+                        Text(
+                          '${recipe.fatPerServing.toStringAsFixed(1)} g',
+                          style: TextStyle(fontWeight: FontWeight.bold, fontSize: 13, color: theme.colorScheme.tertiary),
+                        ),
+                      ],
+                    ),
+                  ),
+                  Expanded(
+                    child: Column(
+                      children: [
+                        Text('C: 炭水化物', style: theme.textTheme.bodySmall?.copyWith(fontSize: 10)),
+                        const SizedBox(height: 2),
+                        Text(
+                          '${recipe.carbsPerServing.toStringAsFixed(1)} g',
+                          style: TextStyle(fontWeight: FontWeight.bold, fontSize: 13, color: theme.colorScheme.secondary),
+                        ),
+                      ],
+                    ),
+                  ),
+                ],
+              ),
+            ),
+            const SizedBox(height: 12),
+            Text(
+              '使用食材 (${recipe.ingredients.length}品 / ${recipe.servings}人前分量):',
+              style: theme.textTheme.labelMedium?.copyWith(
+                color: theme.colorScheme.onSurfaceVariant,
+              ),
+            ),
+            const SizedBox(height: 6),
+            Wrap(
+              spacing: 6,
+              runSpacing: 4,
+              children: recipe.ingredients.map((ing) {
+                return Chip(
+                  label: Text(
+                    '${ing.food.name} ${ing.amount.round()}${ing.food.unitLabel}',
+                    style: const TextStyle(fontSize: 11),
+                  ),
+                  visualDensity: VisualDensity.compact,
+                  materialTapTargetSize: MaterialTapTargetSize.shrinkWrap,
+                );
+              }).toList(),
+            ),
+            const SizedBox(height: 16),
+            FilledButton.icon(
+              onPressed: () => _showAddMealBottomSheet(context, recipe),
+              icon: const Icon(Icons.add, size: 18),
+              label: const Text('今日の食事に記録する'),
+              style: FilledButton.styleFrom(
+                minimumSize: const Size.fromHeight(40),
+              ),
+            ),
+          ],
+        ),
+      ),
     );
   }
 
@@ -516,9 +713,11 @@ class _MyRecipesScreenState extends ConsumerState<MyRecipesScreen> {
     );
   }
 
-  // 食事記録に追加するボトムシート
+  // 食事記録に追加するボトムシート（分量・倍率指定対応）
   void _showAddMealBottomSheet(BuildContext context, Recipe recipe) {
     MealType selectedMealType = MealType.lunch;
+    double currentScale = 1.0;
+    final scaleController = TextEditingController(text: '1');
 
     showModalBottomSheet(
       context: context,
@@ -529,8 +728,27 @@ class _MyRecipesScreenState extends ConsumerState<MyRecipesScreen> {
       builder: (ctx) {
         return StatefulBuilder(
           builder: (context, setSheetState) {
+            final scaledCal = recipe.caloriesPerServing * currentScale;
+            final scaledP = recipe.proteinPerServing * currentScale;
+            final scaledF = recipe.fatPerServing * currentScale;
+            final scaledC = recipe.carbsPerServing * currentScale;
+
+            void setScale(double newScale) {
+              if (newScale <= 0.05 || newScale > 50.0) return;
+              final rounded = (newScale * 100).round() / 100.0;
+              setSheetState(() {
+                currentScale = rounded;
+                scaleController.text = AmountParser.formatAmount(rounded);
+              });
+            }
+
             return Padding(
-              padding: const EdgeInsets.all(24.0),
+              padding: EdgeInsets.only(
+                top: 24.0,
+                left: 24.0,
+                right: 24.0,
+                bottom: MediaQuery.of(context).viewInsets.bottom + 24.0,
+              ),
               child: Column(
                 mainAxisSize: MainAxisSize.min,
                 crossAxisAlignment: CrossAxisAlignment.stretch,
@@ -543,14 +761,79 @@ class _MyRecipesScreenState extends ConsumerState<MyRecipesScreen> {
                   ),
                   const SizedBox(height: 8),
                   Text(
-                    '1人前: ${recipe.caloriesPerServing.round()} kcal (P:${recipe.proteinPerServing.toStringAsFixed(1)}g F:${recipe.fatPerServing.toStringAsFixed(1)}g C:${recipe.carbsPerServing.toStringAsFixed(1)}g)',
+                    '計算値: ${scaledCal.round()} kcal (P:${scaledP.toStringAsFixed(1)}g F:${scaledF.toStringAsFixed(1)}g C:${scaledC.toStringAsFixed(1)}g)',
                     style: Theme.of(context).textTheme.bodyMedium?.copyWith(
-                      color: Theme.of(context).colorScheme.onSurfaceVariant,
+                      fontWeight: FontWeight.bold,
+                      color: Theme.of(context).colorScheme.primary,
                     ),
                   ),
-                  const SizedBox(height: 20),
-                  const Text('食事区分を選択:'),
+                  const SizedBox(height: 16),
+                  Row(
+                    children: [
+                      OutlinedButton(
+                        onPressed: () => setScale(currentScale - 0.1),
+                        style: OutlinedButton.styleFrom(
+                          minimumSize: const Size(48, 44),
+                          padding: const EdgeInsets.symmetric(horizontal: 10),
+                        ),
+                        child: const Text('-0.1', style: TextStyle(fontWeight: FontWeight.bold)),
+                      ),
+                      const SizedBox(width: 10),
+                      Expanded(
+                        child: TextField(
+                          controller: scaleController,
+                          keyboardType: const TextInputType.numberWithOptions(decimal: true),
+                          textAlign: TextAlign.center,
+                          decoration: const InputDecoration(
+                            labelText: '分量 (人前・倍)',
+                            suffixText: '人前',
+                            border: OutlineInputBorder(),
+                            isDense: true,
+                          ),
+                          onChanged: (val) {
+                            final parsed = AmountParser.parse(val);
+                            if (parsed != null && parsed > 0) {
+                              setSheetState(() {
+                                currentScale = parsed;
+                              });
+                            }
+                          },
+                        ),
+                      ),
+                      const SizedBox(width: 10),
+                      OutlinedButton(
+                        onPressed: () => setScale(currentScale + 0.1),
+                        style: OutlinedButton.styleFrom(
+                          minimumSize: const Size(48, 44),
+                          padding: const EdgeInsets.symmetric(horizontal: 10),
+                        ),
+                        child: const Text('+0.1', style: TextStyle(fontWeight: FontWeight.bold)),
+                      ),
+                    ],
+                  ),
                   const SizedBox(height: 10),
+                  Wrap(
+                    spacing: 6,
+                    runSpacing: 6,
+                    children: [
+                      {'label': '1/2 (0.5)', 'scale': 0.5},
+                      {'label': '0.8', 'scale': 0.8},
+                      {'label': '1 (標準)', 'scale': 1.0},
+                      {'label': '1.5', 'scale': 1.5},
+                      {'label': '2', 'scale': 2.0},
+                    ].map((p) {
+                      final s = p['scale'] as double;
+                      return ChoiceChip(
+                        label: Text(p['label'] as String, style: const TextStyle(fontSize: 12)),
+                        selected: (currentScale - s).abs() < 0.02,
+                        visualDensity: VisualDensity.compact,
+                        onSelected: (_) => setScale(s),
+                      );
+                    }).toList(),
+                  ),
+                  const SizedBox(height: 16),
+                  const Text('食事区分を選択:'),
+                  const SizedBox(height: 8),
                   SegmentedButton<MealType>(
                     segments: MealType.values.map((type) {
                       return ButtonSegment<MealType>(
@@ -565,17 +848,25 @@ class _MyRecipesScreenState extends ConsumerState<MyRecipesScreen> {
                       });
                     },
                   ),
-                  const SizedBox(height: 24),
+                  const SizedBox(height: 20),
                   FilledButton(
                     onPressed: () {
+                      final batchId = 'recipe-${DateTime.now().millisecondsSinceEpoch}-${recipe.id}';
+                      final scaleText = (currentScale - 1.0).abs() < 0.01
+                          ? ''
+                          : ' ×${AmountParser.formatAmount(currentScale)}';
+                      final recipeDisplayName = '${recipe.name}$scaleText';
+
                       final mealItems = recipe.ingredients.map((ing) {
-                        final perServingAmount = ing.amount / recipe.servings;
+                        final perServingAmount = (ing.amount / recipe.servings) * currentScale;
                         final ratio = perServingAmount / ing.food.baseAmount;
 
                         return MealItem(
                           id: 'item-${DateTime.now().millisecondsSinceEpoch}-${ing.food.id}',
-                          name: '${ing.food.name} (${recipe.name})',
+                          name: '${ing.food.name} ($recipeDisplayName)',
                           foodId: ing.food.id,
+                          recipeId: batchId,
+                          recipeName: recipeDisplayName,
                           amount: perServingAmount,
                           unit: ing.food.unitLabel,
                           calories: ing.food.calories * ratio,
@@ -593,15 +884,14 @@ class _MyRecipesScreenState extends ConsumerState<MyRecipesScreen> {
 
                       Navigator.of(ctx).pop();
                       ScaffoldMessenger.of(context).showSnackBar(
-                        SnackBar(content: Text('「${recipe.name}」を${selectedMealType.label}に記録しました')),
+                        SnackBar(content: Text('「$recipeDisplayName」を${selectedMealType.label}に記録しました')),
                       );
                     },
                     style: FilledButton.styleFrom(
                       minimumSize: const Size.fromHeight(48),
                     ),
-                    child: const Text('食事に記録する'),
+                    child: Text('この分量で記録する (${scaledCal.round()} kcal)'),
                   ),
-                  const SizedBox(height: 12),
                 ],
               ),
             );

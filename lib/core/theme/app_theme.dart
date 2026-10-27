@@ -88,6 +88,7 @@ class AppTheme {
 
     return ThemeData(
       useMaterial3: true,
+      splashFactory: InkRipple.splashFactory,
       fontFamily: 'NotoSansJP',
       fontFamilyFallback: systemFontFallbacks,
       textTheme: customTextTheme,
@@ -122,7 +123,7 @@ class AppTheme {
           fontWeight: FontWeight.w600,
         ),
       ),
-      cardTheme: CardTheme(
+      cardTheme: CardThemeData(
         elevation: 0,
         shape: RoundedRectangleBorder(
           borderRadius: BorderRadius.circular(12),

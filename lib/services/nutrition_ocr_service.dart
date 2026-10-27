@@ -1,8 +1,20 @@
 import 'dart:convert';
 import 'dart:typed_data';
 import 'package:http/http.dart' as http;
+import 'storage_service.dart';
 
-/// 栄養成分表示の解析結果モデル
+/// APIキーが無効または未設定の場合の例外
+class InvalidGeminiApiKeyException implements Exception {
+  final String message;
+  const InvalidGeminiApiKeyException([
+    this.message = 'Gemini APIキーが無効、または設定されていません。Google AI Studio (aistudio.google.com) で発行した「AIza...」から始まるキーを設定してください。',
+  ]);
+
+  @override
+  String toString() => message;
+}
+
+/// 栄養成分表示・料理写真の解析結果モデル
 class NutritionOcrResult {
   final String? foodName;
   final String? servingUnit;
@@ -70,130 +82,119 @@ class NutritionOcrResult {
   }
 }
 
-/// Gemini Vision API を使用して栄養成分表示をOCR解析するサービス
+/// Gemini 2.5 Flash API を使用して栄養成分表示や食事写真を解析するサービス
 class NutritionOcrService {
-  // secrets_memo.txt より取得したAPIキー
   static const String _defaultApiKey =
       'AQ.Ab8RN6L7CslYZ6nxLiciLNdgjUJGoev1n6wEM8d63NPm4eE4pw';
 
-  final String apiKey;
+  static const String primaryModel = 'gemini-2.5-flash';
+  static const List<String> fallbackModels = [
+    'gemini-2.5-flash-lite',
+    'gemini-2.0-flash',
+  ];
 
-  NutritionOcrService({String? apiKey}) : apiKey = apiKey ?? _defaultApiKey;
+  final String? _overrideApiKey;
 
-  /// 画像バイト列から栄養成分表示を解析
+  NutritionOcrService({String? apiKey}) : _overrideApiKey = apiKey;
+
+  Future<String> _resolveApiKey() async {
+    if (_overrideApiKey != null && _overrideApiKey!.trim().isNotEmpty) {
+      return _overrideApiKey!.trim();
+    }
+    final savedKey = await StorageService.loadGeminiApiKey();
+    if (savedKey != null && savedKey.isNotEmpty) {
+      return savedKey;
+    }
+    return _defaultApiKey;
+  }
+
+  /// 画像バイト列から栄養成分表示（または料理写真）を解析
   Future<NutritionOcrResult> analyzeNutritionImage(
     Uint8List imageBytes, {
     String mimeType = 'image/jpeg',
   }) async {
+    final activeKey = await _resolveApiKey();
     final base64Image = base64Encode(imageBytes);
 
-    final url = Uri.parse(
-      'https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash:generateContent?key=$apiKey',
-    );
-
     const prompt = '''
-あなたは食品パッケージに印字されている「栄養成分表示」の画像解析のプロフェッショナルです。
-提供された画像から、パッケージ裏や側面の栄養成分表示（および商品名や内容量）を正確に読み取り、以下のJSON形式でのみ出力してください。
+あなたは食品パッケージの「栄養成分表示」および「食事写真」の画像解析プロフェッショナルです。
+提供された画像に栄養成分表示がある場合は正確に数値を読み取り、料理や食品そのものの写真である場合は見た目と一般的な分量から栄養価（カロリー・PFC）を推定し、以下のJSON形式でのみ出力してください。
 Markdownのコードブロック（```json など）や説明文は一切含めず、純粋なJSONオブジェクトのみを返してください。
 
 【出力JSONフォーマット】
 {
-  "food_name": "商品名や食品名（画像内に記載があれば推測して記載、なければnull）",
-  "serving_unit": "栄養成分の基準単位（例: '100g当たり', '1食(50g)当たり', '1袋当たり', '1本当たり'）",
+  "food_name": "商品名や料理名（推測できる場合は記載、不明ならnull）",
+  "serving_unit": "栄養成分の基準単位（例: '100g当たり', '1食当たり', '1袋当たり', '推定1人前'）",
   "net_weight_g": 内容量（グラム数値のみ。mlの場合は概算g。判別できなければnull）,
   "calories": 基準単位あたりのエネルギー (kcal, 数値のみ),
   "protein": 基準単位あたりのたんぱく質 (g, 数値のみ),
   "fat": 基準単位あたりの脂質 (g, 数値のみ),
   "carbs": 基準単位あたりの炭水化物 (g, 数値のみ。糖質と食物繊維に分かれている場合は合算または糖質),
-  "total_calories": 内容量全体（1包装・1袋・1本全体）のエネルギー(kcal, 数値のみ。すでに1包装あたりならcaloriesと同じ値。内容量と基準単位から計算可能な場合は計算して記載),
-  "total_protein": 1包装全体のたんぱく質 (g, 数値のみ),
-  "total_fat": 1包装全体の脂質 (g, 数値のみ),
-  "total_carbs": 1包装全体の炭水化物 (g, 数値のみ)
+  "total_calories": 内容量全体（1包装・1食全体）のエネルギー(kcal, 数値のみ。すでに1包装/1食あたりならcaloriesと同じ値。内容量と基準単位から計算可能な場合は計算して記載),
+  "total_protein": 1包装/1食全体のたんぱく質 (g, 数値のみ),
+  "total_fat": 1包装/1食全体の脂質 (g, 数値のみ),
+  "total_carbs": 1包装/1食全体の炭水化物 (g, 数値のみ)
 }
 ''';
 
-    final requestBody = {
-      'contents': [
-        {
-          'parts': [
-            {'text': prompt},
-            {
-              'inlineData': {
-                'mimeType': mimeType,
-                'data': base64Image,
-              }
-            }
-          ]
-        }
-      ],
-      'generationConfig': {
-        'temperature': 0.1,
-        'responseMimeType': 'application/json',
-      }
-    };
+    final modelsToTry = [primaryModel, ...fallbackModels];
+    http.Response? lastResponse;
 
-    final response = await http.post(
-      url,
-      headers: {'Content-Type': 'application/json'},
-      body: jsonEncode(requestBody),
-    );
-
-    if (response.statusCode != 200) {
-      // フォールバック: gemini-1.5-flash または詳細エラー処理
-      if (response.statusCode == 404 || response.statusCode == 400) {
-        return _fallbackToGemini15(imageBytes, mimeType, prompt);
-      }
-      throw Exception(
-        'Gemini API エラー (HTTP ${response.statusCode}): ${response.body}',
+    for (final model in modelsToTry) {
+      final url = Uri.parse(
+        'https://generativelanguage.googleapis.com/v1beta/models/$model:generateContent?key=$activeKey',
       );
+
+      final requestBody = {
+        'contents': [
+          {
+            'parts': [
+              {'text': prompt},
+              {
+                'inline_data': {
+                  'mime_type': mimeType,
+                  'data': base64Image,
+                }
+              }
+            ]
+          }
+        ],
+        'generationConfig': {
+          'temperature': 0.1,
+          'responseMimeType': 'application/json',
+        }
+      };
+
+      final response = await http.post(
+        url,
+        headers: {'Content-Type': 'application/json'},
+        body: jsonEncode(requestBody),
+      );
+
+      if (response.statusCode == 200) {
+        return _parseGeminiResponse(response.body);
+      }
+
+      lastResponse = response;
+
+      // APIキー自体が無効な場合 (400 API_KEY_INVALID または 403) は別モデルにフォールバックせず即座に通知
+      if (response.statusCode == 400 &&
+          (response.body.contains('API_KEY_INVALID') ||
+              response.body.contains('key not valid'))) {
+        throw const InvalidGeminiApiKeyException();
+      }
+
+      // 404 (モデル未対応) や 503 (一時混雑) の場合のみ次のモデルを試行
+      if (response.statusCode == 404 || response.statusCode == 503) {
+        continue;
+      }
+
+      break;
     }
 
-    return _parseGeminiResponse(response.body);
-  }
-
-  Future<NutritionOcrResult> _fallbackToGemini15(
-    Uint8List imageBytes,
-    String mimeType,
-    String prompt,
-  ) async {
-    final base64Image = base64Encode(imageBytes);
-    final fallbackUrl = Uri.parse(
-      'https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash:generateContent?key=$apiKey',
+    throw Exception(
+      'Gemini 2.5 Flash API エラー (HTTP ${lastResponse?.statusCode}): ${lastResponse?.body}',
     );
-
-    final requestBody = {
-      'contents': [
-        {
-          'parts': [
-            {'text': prompt},
-            {
-              'inlineData': {
-                'mimeType': mimeType,
-                'data': base64Image,
-              }
-            }
-          ]
-        }
-      ],
-      'generationConfig': {
-        'temperature': 0.1,
-        'responseMimeType': 'application/json',
-      }
-    };
-
-    final response = await http.post(
-      fallbackUrl,
-      headers: {'Content-Type': 'application/json'},
-      body: jsonEncode(requestBody),
-    );
-
-    if (response.statusCode != 200) {
-      throw Exception(
-        'Gemini API フォールバックエラー (HTTP ${response.statusCode}): ${response.body}',
-      );
-    }
-
-    return _parseGeminiResponse(response.body);
   }
 
   NutritionOcrResult _parseGeminiResponse(String responseBody) {

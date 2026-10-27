@@ -70,6 +70,35 @@ extension MyListCategoryExtension on MyListCategory {
   }
 }
 
+/// マイリストの並べ替え種別
+enum RecipeSortType {
+  custom, // カスタム順（手動並べ替え）
+  nameAsc, // あいうえお順（名前昇順）
+  createdAtDesc, // 登録が新しい順
+  createdAtAsc, // 登録が古い順
+  caloriesDesc, // カロリーが多い順
+  proteinDesc, // タンパク質が多い順
+}
+
+extension RecipeSortTypeExtension on RecipeSortType {
+  String get label {
+    switch (this) {
+      case RecipeSortType.custom:
+        return 'カスタム順';
+      case RecipeSortType.nameAsc:
+        return 'あいうえお順';
+      case RecipeSortType.createdAtDesc:
+        return '新しい順';
+      case RecipeSortType.createdAtAsc:
+        return '古い順';
+      case RecipeSortType.caloriesDesc:
+        return 'カロリー順';
+      case RecipeSortType.proteinDesc:
+        return 'タンパク質順';
+    }
+  }
+}
+
 class Recipe {
   final String id;
   final String name;
@@ -77,6 +106,7 @@ class Recipe {
   final int servings; // 人前
   final List<RecipeIngredient> ingredients;
   final MyListCategory category;
+  final String? customGroup; // ユーザー定義グループ名（未設定時はcategoryの短縮ラベル）
   final DateTime createdAt;
 
   const Recipe({
@@ -86,8 +116,17 @@ class Recipe {
     this.servings = 1,
     required this.ingredients,
     this.category = MyListCategory.homeCooked,
+    this.customGroup,
     required this.createdAt,
   });
+
+  /// 表示・絞り込みに使用するグループ名
+  String get effectiveGroup {
+    if (customGroup != null && customGroup!.trim().isNotEmpty) {
+      return customGroup!.trim();
+    }
+    return category.shortLabel;
+  }
 
   double get totalCalories =>
       ingredients.fold(0.0, (sum, item) => sum + item.calories);
@@ -111,6 +150,8 @@ class Recipe {
     int? servings,
     List<RecipeIngredient>? ingredients,
     MyListCategory? category,
+    String? customGroup,
+    bool clearCustomGroup = false,
     DateTime? createdAt,
   }) {
     return Recipe(
@@ -120,6 +161,7 @@ class Recipe {
       servings: servings ?? this.servings,
       ingredients: ingredients ?? this.ingredients,
       category: category ?? this.category,
+      customGroup: clearCustomGroup ? null : (customGroup ?? this.customGroup),
       createdAt: createdAt ?? this.createdAt,
     );
   }
@@ -131,6 +173,7 @@ class Recipe {
       'description': description,
       'servings': servings,
       'category': category.name,
+      'customGroup': customGroup,
       'ingredients': ingredients.map((i) => i.toJson()).toList(),
       'createdAt': createdAt.toIso8601String(),
     };
@@ -161,6 +204,7 @@ class Recipe {
       description: json['description'] as String?,
       servings: json['servings'] as int? ?? 1,
       category: cat,
+      customGroup: json['customGroup'] as String?,
       ingredients: ingredientsList,
       createdAt: DateTime.parse(json['createdAt'] as String),
     );

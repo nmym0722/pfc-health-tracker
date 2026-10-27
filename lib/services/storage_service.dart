@@ -111,8 +111,34 @@ class StorageService {
     }
   }
 
+  // --- カスタムレシピグループの永続化 ---
+  static const _keyCustomRecipeGroups = 'pfc_tracker_custom_recipe_groups_v1';
+
+  static Future<void> saveCustomRecipeGroups(List<String> groups) async {
+    final p = await prefs;
+    await p.setStringList(_keyCustomRecipeGroups, groups);
+  }
+
+  static Future<List<String>?> loadCustomRecipeGroups() async {
+    final p = await prefs;
+    return p.getStringList(_keyCustomRecipeGroups);
+  }
+
   // --- 食材マスタの永続化 ---
   static const _keyFoodMasters = 'pfc_tracker_foods_v1';
+  static const _keyGeminiApiKey = 'pfc_tracker_gemini_api_key_v1';
+
+  static Future<void> saveGeminiApiKey(String apiKey) async {
+    final p = await prefs;
+    await p.setString(_keyGeminiApiKey, apiKey.trim());
+  }
+
+  static Future<String?> loadGeminiApiKey() async {
+    final p = await prefs;
+    final key = p.getString(_keyGeminiApiKey)?.trim();
+    if (key == null || key.isEmpty) return null;
+    return key;
+  }
 
   static Future<void> saveFoodMasters(List<FoodMaster> foods) async {
     final p = await prefs;

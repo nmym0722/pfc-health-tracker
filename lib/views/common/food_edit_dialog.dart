@@ -216,6 +216,7 @@ class _FoodEditDialogState extends ConsumerState<FoodEditDialog> {
                       flex: 6,
                       child: DropdownButtonFormField<String>(
                         value: _selectedCategory,
+                        isExpanded: true,
                         decoration: const InputDecoration(
                           labelText: 'カテゴリ',
                           border: OutlineInputBorder(),

@@ -4,6 +4,7 @@ import '../../core/utils/amount_parser.dart';
 import '../../models/food_master.dart';
 import '../../models/recipe.dart';
 import '../../providers/food_master_provider.dart';
+import 'recipe_group_selector.dart';
 
 class RecipeEditDialog extends ConsumerStatefulWidget {
   final Recipe recipe;
@@ -29,6 +30,7 @@ class _RecipeEditDialogState extends ConsumerState<RecipeEditDialog> {
   late TextEditingController _descController;
   late int _servings;
   late MyListCategory _category;
+  late String _group;
   late List<RecipeIngredient> _ingredients;
   late List<TextEditingController> _amountControllers;
 
@@ -42,6 +44,7 @@ class _RecipeEditDialogState extends ConsumerState<RecipeEditDialog> {
     _descController = TextEditingController(text: widget.recipe.description ?? '');
     _servings = widget.recipe.servings > 0 ? widget.recipe.servings : 1;
     _category = widget.recipe.category;
+    _group = widget.recipe.effectiveGroup;
     _ingredients = List<RecipeIngredient>.from(widget.recipe.ingredients);
     _amountControllers = _ingredients
         .map((ing) => TextEditingController(text: AmountParser.formatAmount(ing.amount)))
@@ -140,17 +143,18 @@ class _RecipeEditDialogState extends ConsumerState<RecipeEditDialog> {
                 ),
               ),
               const SizedBox(height: 12),
-              SegmentedButton<MyListCategory>(
-                segments: MyListCategory.values.map((cat) {
-                  return ButtonSegment<MyListCategory>(
-                    value: cat,
-                    label: Text(cat.shortLabel, style: const TextStyle(fontSize: 12)),
-                  );
-                }).toList(),
-                selected: {_category},
-                onSelectionChanged: (newSel) {
+              RecipeGroupSelector(
+                selectedGroup: _group,
+                onGroupChanged: (g) {
                   setState(() {
-                    _category = newSel.first;
+                    _group = g;
+                    if (g == '食材') {
+                      _category = MyListCategory.ingredient;
+                    } else if (g == '外食') {
+                      _category = MyListCategory.diningOut;
+                    } else {
+                      _category = MyListCategory.homeCooked;
+                    }
                   });
                 },
               ),
@@ -345,6 +349,7 @@ class _RecipeEditDialogState extends ConsumerState<RecipeEditDialog> {
               clearDescription: _descController.text.trim().isEmpty,
               servings: _servings,
               category: _category,
+              customGroup: _group,
               ingredients: _ingredients,
             );
             ref.read(recipeProvider.notifier).updateRecipe(updated);

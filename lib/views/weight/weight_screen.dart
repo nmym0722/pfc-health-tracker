@@ -253,37 +253,45 @@ class _WeightScreenState extends ConsumerState<WeightScreen> {
                   }
                 }
 
-                return SingleChildScrollView(
-                  scrollDirection: Axis.horizontal,
-                  child: Row(
-                    children: [
-                      ActionChip(
-                        avatar: const Icon(Icons.history, size: 15),
+                return Wrap(
+                  spacing: 6,
+                  runSpacing: 6,
+                  children: [
+                    ActionChip(
+                      avatar: const Icon(Icons.history, size: 15),
+                      label: Text(
+                        '前回値 (${lastWeight.toStringAsFixed(1)}kg)',
+                        style: const TextStyle(fontSize: 12, fontWeight: FontWeight.w600),
+                      ),
+                      visualDensity: VisualDensity.compact,
+                      onPressed: () {
+                        setState(() {
+                          _weightController.text = lastWeight.toStringAsFixed(1);
+                        });
+                      },
+                    ),
+                    ...[-0.5, -0.1, 0.1, 0.5].map((delta) {
+                      final isNeg = delta < 0;
+                      final label = '${delta > 0 ? '+' : '-'}${delta.abs().toStringAsFixed(1)}kg';
+                      return ActionChip(
+                        backgroundColor: isNeg
+                            ? theme.colorScheme.primaryContainer.withOpacity(0.45)
+                            : null,
                         label: Text(
-                          '前回値 (${lastWeight.toStringAsFixed(1)}kg)',
-                          style: const TextStyle(fontSize: 12, fontWeight: FontWeight.w600),
+                          label,
+                          style: TextStyle(
+                            fontSize: 12,
+                            fontWeight: FontWeight.bold,
+                            color: isNeg
+                                ? theme.colorScheme.onPrimaryContainer
+                                : theme.colorScheme.onSurface,
+                          ),
                         ),
                         visualDensity: VisualDensity.compact,
-                        onPressed: () {
-                          setState(() {
-                            _weightController.text = lastWeight.toStringAsFixed(1);
-                          });
-                        },
-                      ),
-                      const SizedBox(width: 6),
-                      ...[-0.5, -0.1, 0.1, 0.5].map((delta) {
-                        final label = '${delta > 0 ? '+' : ''}${delta.toStringAsFixed(1)}kg';
-                        return Padding(
-                          padding: const EdgeInsets.only(right: 6.0),
-                          child: ActionChip(
-                            label: Text(label, style: const TextStyle(fontSize: 12)),
-                            visualDensity: VisualDensity.compact,
-                            onPressed: () => stepWeight(delta),
-                          ),
-                        );
-                      }),
-                    ],
-                  ),
+                        onPressed: () => stepWeight(delta),
+                      );
+                    }),
+                  ],
                 );
               },
             ),
@@ -316,9 +324,7 @@ class _WeightScreenState extends ConsumerState<WeightScreen> {
             ElevatedButton.icon(
               onPressed: _submitWeight,
               icon: const Icon(Icons.check),
-              label: Text(
-                isToday ? '記録してEMAトレンドと目標を更新' : '$dateLabel の体重を記録',
-              ),
+              label: const Text('記録する'),
               style: ElevatedButton.styleFrom(
                 minimumSize: const Size.fromHeight(48),
               ),
