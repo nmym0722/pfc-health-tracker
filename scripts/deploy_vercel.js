@@ -136,6 +136,47 @@ async function main() {
   };
 
   const result = await request(deployOptions, deployPayload);
+
+  // デプロイの完了（READY状態）を待機
+  console.log('\n[Vercel Deploy] Waiting for deployment to become READY...');
+  let isReady = false;
+  for (let attempt = 0; attempt < 15; attempt++) {
+    await new Promise(r => setTimeout(r, 2000));
+    try {
+      const depInfo = await request({
+        hostname: 'api.vercel.com',
+        path: `/v13/deployments/${result.id}?teamId=${TEAM_ID}`,
+        method: 'GET',
+        headers: { 'Authorization': `Bearer ${TOKEN}` },
+      });
+      if (depInfo.readyState === 'READY') {
+        isReady = true;
+        break;
+      }
+      process.stdout.write('.');
+    } catch (_) {}
+  }
+
+  // 本番ドメイン（pfc-tracker-tau.vercel.app）へのエイリアス割り当て
+  console.log('\n[Vercel Deploy] Assigning alias to pfc-tracker-tau.vercel.app...');
+  const aliasPayload = JSON.stringify({ alias: 'pfc-tracker-tau.vercel.app' });
+  const aliasOptions = {
+    hostname: 'api.vercel.com',
+    path: `/v2/deployments/${result.id}/aliases?teamId=${TEAM_ID}`,
+    method: 'POST',
+    headers: {
+      'Authorization': `Bearer ${TOKEN}`,
+      'Content-Type': 'application/json',
+      'Content-Length': Buffer.byteLength(aliasPayload),
+    },
+  };
+  try {
+    await request(aliasOptions, aliasPayload);
+    console.log('[Vercel Deploy] Alias assigned successfully!');
+  } catch (aliasErr) {
+    console.warn('[Vercel Deploy] Warning: Alias assignment failed:', aliasErr.message);
+  }
+
   console.log('\n=============================================================');
   console.log(' Vercel Production Deployment SUCCESS!');
   console.log(` Deployment URL: https://${result.url}`);

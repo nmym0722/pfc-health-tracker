@@ -4,7 +4,7 @@
   "private": true,
   "scripts": {
     "build": "echo 'Build skipped: Flutter Web is pre-built locally and deployed via API'",
-    "build:flutter": "flutter build web --wasm",
+    "build:flutter": "flutter build web --wasm --no-tree-shake-icons",
     "preview": "node scripts/preview.js",
     "serve": "node scripts/serve_web.js",
     "tunnel": "npx cloudflared tunnel --url http://127.0.0.1:8085",
